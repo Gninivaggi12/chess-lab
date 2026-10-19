@@ -44,9 +44,11 @@ export function mountApp(root: HTMLElement, deps: {
   let promoting: { from: Square; to: Square } | null = null;
   let lastMove: Uci | null = null;
   let selected: Square | null = null;
-  const human: Color = "w";
+  let human: Color = "w";
   let flipped = human === "b";
-  const level = 3;
+  let level = 3;
+  // Pending settings, applied when new-game is tapped. Time control is stored for the clock task.
+  const settings = { level: "3", color: "w", timeControl: "none", customMinutes: "10", customIncrement: "0" };
   let over = false;
   let thinking = false;
   let gameId = 0;
@@ -135,6 +137,38 @@ export function mountApp(root: HTMLElement, deps: {
     flip.setAttribute("data-action", "flip");
     flip.textContent = "Flip";
     flip.addEventListener("click", () => { flipped = !flipped; render(); });
+    const newGame = document.createElement("button");
+    newGame.setAttribute("data-action", "new-game");
+    newGame.textContent = "New game";
+    newGame.addEventListener("click", startNewGame);
+    const select = (attr: string, key: "level" | "color" | "timeControl", options: string[][]) => {
+      const el = document.createElement("select");
+      el.setAttribute(attr, "");
+      for (const [value, label] of options) el.append(new Option(label, value));
+      el.value = settings[key];
+      el.addEventListener("change", () => { settings[key] = el.value; });
+      return el;
+    };
+    const number = (attr: string, key: "customMinutes" | "customIncrement") => {
+      const el = document.createElement("input");
+      el.setAttribute(attr, "");
+      el.type = "number";
+      el.value = settings[key];
+      const update = () => { settings[key] = el.value; };
+      el.addEventListener("input", update);
+      el.addEventListener("change", update);
+      return el;
+    };
+    controls.append(
+      select("data-level", "level", [1, 2, 3, 4, 5].map((n) => [String(n), `Level ${n}`])),
+      select("data-color", "color", [["w", "White"], ["b", "Black"], ["random", "Random"]]),
+      select("data-time-control", "timeControl", [
+        ["none", "No clock"], ...["1+0", "3+0", "3+2", "5+0", "10+0", "15+10", "30+0"].map((t) => [t, t]), ["custom", "Custom"],
+      ]),
+      number("data-custom-minutes", "customMinutes"),
+      number("data-custom-increment", "customIncrement"),
+      newGame,
+    );
     controls.append(flip);
     root.replaceChildren(boardEl, picker, status, list, controls);
   }
@@ -172,6 +206,24 @@ export function mountApp(root: HTMLElement, deps: {
     } else {
       selected = pieces().get(sq)?.[0] === human && sq !== selected ? sq : null;
     }
+    render();
+  }
+
+  function startNewGame() {
+    gameId++;
+    if (timer) { clearTimeout(timer); timer = null; }
+    fen = INITIAL_FEN;
+    sans.length = 0;
+    ucis.length = 0;
+    promoting = null;
+    lastMove = null;
+    selected = null;
+    over = false;
+    thinking = false;
+    level = Number(settings.level);
+    human = settings.color === "random" ? ((deps.random ?? Math.random)() < 0.5 ? "w" : "b") : settings.color === "b" ? "b" : "w";
+    flipped = human === "b";
+    if (human === "b") engineTurn();
     render();
   }
 
