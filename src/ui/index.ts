@@ -49,6 +49,7 @@ export function mountApp(root: HTMLElement, deps: {
   let level = 3;
   // Pending settings, applied when new-game is tapped. Time control is stored for the clock task.
   const settings = { level: "3", color: "w", timeControl: "none", customMinutes: "10", customIncrement: "0" };
+  let clocked = false;
   let over = false;
   let thinking = false;
   let gameId = 0;
@@ -169,7 +170,12 @@ export function mountApp(root: HTMLElement, deps: {
       number("data-custom-increment", "customIncrement"),
       newGame,
     );
-    controls.append(flip);
+    const undo = document.createElement("button");
+    undo.setAttribute("data-action", "undo");
+    undo.textContent = "Undo";
+    undo.disabled = clocked || ucis.length <= (human === "b" ? 1 : 0);
+    undo.addEventListener("click", undoMove);
+    controls.append(flip, undo);
     root.replaceChildren(boardEl, picker, status, list, controls);
   }
 
@@ -209,7 +215,27 @@ export function mountApp(root: HTMLElement, deps: {
     render();
   }
 
+  function undoMove() {
+    if (clocked || ucis.length <= (human === "b" ? 1 : 0)) return;
+    // Cancel a pending engine search (its reply is dropped via gameId) and take back
+    // your move; otherwise take back the engine's reply too, unless you moved last.
+    const count = thinking || turn() !== human ? 1 : 2;
+    gameId++;
+    if (timer) { clearTimeout(timer); timer = null; }
+    thinking = false;
+    ucis.length -= count;
+    sans.length -= count;
+    fen = INITIAL_FEN;
+    for (const u of ucis) fen = applyMove(fen, u);
+    lastMove = ucis.length ? ucis[ucis.length - 1] : null;
+    promoting = null;
+    selected = null;
+    over = gameStatus(INITIAL_FEN, ucis).over;
+    render();
+  }
+
   function startNewGame() {
+    clocked = settings.timeControl !== "none";
     gameId++;
     if (timer) { clearTimeout(timer); timer = null; }
     fen = INITIAL_FEN;
