@@ -49,6 +49,7 @@ export function mountApp(root: HTMLElement, deps: {
   const now = deps.now ?? (() => performance.now());
   const storage = deps.storage ?? (typeof localStorage !== "undefined" ? localStorage : undefined);
   const MUTE_KEY = "chess-lab:muted";
+  const GAME_KEY = "chess-lab:game";
   let muted = false;
   try { muted = storage?.getItem(MUTE_KEY) === "1"; } catch { /* storage unavailable */ }
 
@@ -73,6 +74,46 @@ export function mountApp(root: HTMLElement, deps: {
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const turn = (): Color => (fen.split(" ")[1] === "b" ? "b" : "w");
+
+  function save() {
+    try {
+      storage?.setItem(GAME_KEY, JSON.stringify({
+        ucis, human, level, flipped, settings, clocked, incrementMs,
+        clock: clock ? { w: clock.remaining("w"), b: clock.remaining("b") } : null,
+      }));
+    } catch { /* storage unavailable */ }
+  }
+
+  // Returns true when a saved game was loaded.
+  function restore(): boolean {
+    try {
+      const raw = storage?.getItem(GAME_KEY);
+      if (!raw) return false;
+      const d = JSON.parse(raw);
+      let f = INITIAL_FEN;
+      const s: string[] = [];
+      for (const u of d.ucis as Uci[]) { s.push(toSAN(f, u)); f = applyMove(f, u); }
+      fen = f;
+      sans.push(...s);
+      ucis.push(...d.ucis);
+      human = d.human === "b" ? "b" : "w";
+      level = Number(d.level) || 3;
+      flipped = !!d.flipped;
+      Object.assign(settings, d.settings);
+      clocked = !!d.clocked;
+      incrementMs = Number(d.incrementMs) || 0;
+      lastMove = ucis.length ? ucis[ucis.length - 1] : null;
+      over = gameStatus(INITIAL_FEN, ucis).over;
+      if (clocked && d.clock) {
+        clock = createClock({ initialMs: d.clock.w, incrementMs, restore: ucis.length ? { w: d.clock.w, b: d.clock.b, turn: turn() } : undefined }, now);
+        if (over) clock.pause();
+      }
+      return true;
+    } catch {
+      fen = INITIAL_FEN; sans.length = 0; ucis.length = 0; clock = null; clocked = false; over = false; lastMove = null;
+      return false;
+    }
+  }
 
   function pieces(): Map<Square, string> {
     const m = new Map<Square, string>();
@@ -240,6 +281,7 @@ export function mountApp(root: HTMLElement, deps: {
     const bottom = clockEl(flipped ? "b" : "w");
     root.replaceChildren(top, boardEl, bottom, picker, status, list, controls);
     updateClocks();
+    save();
   }
 
   function playMove(uci: Uci) {
@@ -353,9 +395,12 @@ export function mountApp(root: HTMLElement, deps: {
     });
   }
 
+  restore();
   render();
+  if (!over && ucis.length && turn() !== human) engineTurn();
   return {
     destroy() {
+      save();
       gameId++;
       clearInterval(ticker);
       if (timer) clearTimeout(timer);
