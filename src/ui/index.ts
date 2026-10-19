@@ -47,6 +47,10 @@ export function mountApp(root: HTMLElement, deps: {
   const engine = deps.engine ?? workerEngine();
   const sound = deps.sound ?? { play };
   const now = deps.now ?? (() => performance.now());
+  const storage = deps.storage ?? (typeof localStorage !== "undefined" ? localStorage : undefined);
+  const MUTE_KEY = "chess-lab:muted";
+  let muted = false;
+  try { muted = storage?.getItem(MUTE_KEY) === "1"; } catch { /* storage unavailable */ }
 
   let fen = INITIAL_FEN;
   const sans: string[] = [];
@@ -197,7 +201,16 @@ export function mountApp(root: HTMLElement, deps: {
     undo.textContent = "Undo";
     undo.disabled = clocked || ucis.length <= (human === "b" ? 1 : 0);
     undo.addEventListener("click", undoMove);
-    controls.append(flip, undo);
+    const mute = document.createElement("button");
+    mute.setAttribute("data-action", "mute");
+    mute.textContent = muted ? "Unmute" : "Mute";
+    if (muted) mute.setAttribute("data-muted", "");
+    mute.addEventListener("click", () => {
+      muted = !muted;
+      try { storage?.setItem(MUTE_KEY, muted ? "1" : "0"); } catch { /* ignore */ }
+      render();
+    });
+    controls.append(flip, undo, mute);
     const clockEl = (c: Color) => {
       const el = document.createElement("div");
       el.setAttribute("data-clock", c);
@@ -219,7 +232,7 @@ export function mountApp(root: HTMLElement, deps: {
     selected = null;
     over = gameStatus(INITIAL_FEN, ucis).over;
     if (over) clock?.pause();
-    sound.play(soundFor(san, over));
+    if (!muted) sound.play(soundFor(san, over));
   }
 
   function choosePromotion(piece: string) {
