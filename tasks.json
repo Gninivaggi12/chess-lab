@@ -255,7 +255,7 @@
     "tests": [
       "tests/clock.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "sound",
@@ -264,7 +264,7 @@
     "tests": [
       "tests/sound.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-board",
@@ -390,7 +390,7 @@
     "tests": [
       "tests/pwa_install.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "pwa-offline",
@@ -401,7 +401,7 @@
     "tests": [
       "tests/pwa_offline.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "pwa-build",
