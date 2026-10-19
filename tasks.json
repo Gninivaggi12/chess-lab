@@ -211,7 +211,7 @@
     "tests": [
       "tests/pgn_in.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "engine-search",
