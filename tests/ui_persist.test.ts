@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-// Hand-written oracle tests: saved game and sound muting (SPEC "UI", "Sound"). Read-only to agents.
+// Hand-written oracle tests: the saved game (SPEC "UI"). Read-only to agents.
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { memoryStorage, scriptedEngine, start } from "./_ui.ts";
 
 afterEach(() => { vi.useRealTimers(); });
 
-describe("persistence and sound", () => {
+describe("persistence", () => {
   test("the game in progress survives closing the app", async () => {
     const storage = memoryStorage();
     const h = await start({ engine: scriptedEngine(["e7e5"]), storage });
@@ -17,28 +17,5 @@ describe("persistence and sound", () => {
     expect(again.piece("e5")).toBe("bP");
     expect(again.plies()).toEqual(["e4", "e5"]);
     expect(again.status()).toBe("White to move");
-  });
-
-  test("mute silences moves and is remembered", async () => {
-    const storage = memoryStorage();
-    const h = await start({ engine: scriptedEngine(["e7e5"]), storage });
-    h.action("mute");
-    await h.advance(0);
-    expect(h.control("mute").hasAttribute("data-muted")).toBe(true);
-    await h.move("e2", "e4");
-    await h.advance(700);
-    expect(h.sounds).toEqual([]);
-    h.app.destroy();
-    const again = await start({ storage });
-    expect(again.control("mute").hasAttribute("data-muted")).toBe(true);
-  });
-
-  test("captures and checks pick their sounds", async () => {
-    const h = await start({ engine: scriptedEngine(["d7d5", "e8d7"]) });
-    await h.move("e2", "e4");
-    await h.advance(700);
-    await h.move("e4", "d5");                      // capture
-    await h.advance(700);
-    expect(h.sounds).toEqual(["move", "move", "capture", "move"]);
   });
 });

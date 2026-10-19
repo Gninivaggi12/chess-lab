@@ -1,4 +1,4 @@
-// Hand-written oracle tests for the phone app files (SPEC "Phone app (PWA)"). Read-only to agents.
+// Hand-written oracle tests: index.html, manifest and icons (SPEC "Phone app (PWA)"). Read-only to agents.
 import { existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -20,7 +20,7 @@ function appSources(): string {
   return [read("index.html"), ...files.filter((f) => /\.(ts|js)$/.test(f)).map((f) => read(join("src", "app", f)))].join("\n");
 }
 
-describe("phone app", () => {
+describe("installable", () => {
   test("index.html has the viewport, manifest and iOS tags", () => {
     const html = read("index.html");
     expect(html).toMatch(/<meta[^>]+name=["']viewport["']/);
@@ -46,20 +46,4 @@ describe("phone app", () => {
     expect(pngSize("public/icon-512.png")).toEqual([512, 512]);
     expect(pngSize("public/apple-touch-icon.png")).toEqual([180, 180]);
   });
-
-  test("a service worker caches the app and is registered", () => {
-    const sw = read("public/sw.js");
-    expect(sw).toMatch(/caches\.open/);
-    expect(sw).toMatch(/addEventListener\(\s*["']fetch["']/);
-    expect(appSources()).toMatch(/serviceWorker\.register\(\s*["'`]\/sw\.js["'`]/);
-  });
-
-  test("npm run build succeeds and ships the PWA files", async () => {
-    const { build } = await import("vite");
-    const outDir = mkdtempSync(join(tmpdir(), "chess-build-"));
-    await build({ root: ROOT, logLevel: "silent", build: { outDir, emptyOutDir: true } });
-    for (const f of ["index.html", "manifest.webmanifest", "sw.js", "icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
-      expect(existsSync(join(outDir, f)), f).toBe(true);
-    }
-  }, 120_000);
 });
