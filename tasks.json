@@ -1,1 +1,419 @@
-[]
+[
+  {
+    "id": "core-fen",
+    "title": "Core foundation: board representation, FEN parsing, attack detection, isValidFEN, INITIAL_FEN",
+    "depends_on": [],
+    "tests": [
+      "tests/fen_valid.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-in-check",
+    "title": "Core: inCheck",
+    "depends_on": [
+      "core-fen"
+    ],
+    "tests": [
+      "tests/in_check.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-moves-basic",
+    "title": "Core: legalMoves for ordinary moves of every piece, legal only (pins; the king never moves into check). No castling, en passant or promotion yet",
+    "depends_on": [
+      "core-fen"
+    ],
+    "tests": [
+      "tests/moves_basic.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-moves-check",
+    "title": "Core: legalMoves when the side to move is in check (evasions: king moves, captures of the checker, blocks; double check)",
+    "depends_on": [
+      "core-moves-basic"
+    ],
+    "tests": [
+      "tests/moves_check.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-moves-castling",
+    "title": "Core: legalMoves with castling (rights, empty squares, no castling out of, through or into check)",
+    "depends_on": [
+      "core-moves-basic"
+    ],
+    "tests": [
+      "tests/moves_castling.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-moves-promotion",
+    "title": "Core: legalMoves with promotions (all four pieces, by push and by capture)",
+    "depends_on": [
+      "core-moves-basic"
+    ],
+    "tests": [
+      "tests/moves_promotion.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-moves-en-passant",
+    "title": "Core: legalMoves with en passant (including the rank pin that makes it illegal)",
+    "depends_on": [
+      "core-moves-basic",
+      "core-moves-check"
+    ],
+    "tests": [
+      "tests/moves_en_passant.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-perft",
+    "title": "Core: perft (fast enough for the published positions)",
+    "depends_on": [
+      "core-moves-basic",
+      "core-moves-check",
+      "core-moves-castling",
+      "core-moves-promotion",
+      "core-moves-en-passant"
+    ],
+    "tests": [
+      "tests/perft.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-normalize",
+    "title": "Core: normalizeFEN (canonical form, en passant kept only if an ep capture is legal)",
+    "depends_on": [
+      "core-moves-basic",
+      "core-moves-check",
+      "core-moves-castling",
+      "core-moves-promotion",
+      "core-moves-en-passant"
+    ],
+    "tests": [
+      "tests/fen_normalize.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-apply",
+    "title": "Core: applyMove (clocks, castling rights, en passant, normalized output, throws on illegal)",
+    "depends_on": [
+      "core-normalize"
+    ],
+    "tests": [
+      "tests/apply_basic.test.ts",
+      "tests/apply_special.test.ts",
+      "tests/apply_illegal.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-position-status",
+    "title": "Core: positionStatus (checkmate, stalemate, insufficient material, fifty-move rule, precedence)",
+    "depends_on": [
+      "core-moves-basic",
+      "core-moves-check",
+      "core-moves-castling",
+      "core-moves-promotion",
+      "core-moves-en-passant"
+    ],
+    "tests": [
+      "tests/status_position.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-game-status",
+    "title": "Core: gameStatus with automatic threefold repetition",
+    "depends_on": [
+      "core-apply",
+      "core-position-status"
+    ],
+    "tests": [
+      "tests/status_game.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-timeout",
+    "title": "Core: timeoutResult (loss on time vs draw when the opponent can't mate)",
+    "depends_on": [
+      "core-fen"
+    ],
+    "tests": [
+      "tests/timeout.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "core-premove-targets",
+    "title": "Core: premoveTargets (empty-board movement, castling by rights, pawn pushes/diagonals)",
+    "depends_on": [
+      "core-fen"
+    ],
+    "tests": [
+      "tests/premove.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "notation-san-out",
+    "title": "Notation: toSAN (disambiguation, castling, promotion, +/#)",
+    "depends_on": [
+      "core-apply",
+      "core-in-check"
+    ],
+    "tests": [
+      "tests/san_out.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "notation-san-in",
+    "title": "Notation: fromSAN (tolerant parsing, 0-0, annotations, null on illegal/ambiguous)",
+    "depends_on": [
+      "notation-san-out"
+    ],
+    "tests": [
+      "tests/san_in.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "notation-pgn-out",
+    "title": "Notation: toPGN (seven-tag roster, SetUp/FEN, numbered move text, 1... for Black start)",
+    "depends_on": [
+      "notation-san-out"
+    ],
+    "tests": [
+      "tests/pgn_out.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "notation-pgn-in",
+    "title": "Notation: parsePGN (comments, NAGs, nested variations, move numbers, first game only)",
+    "depends_on": [
+      "notation-san-in",
+      "notation-pgn-out"
+    ],
+    "tests": [
+      "tests/pgn_in.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "engine-search",
+    "title": "Engine: bestMove with levels 1-5, alpha-beta + evaluation, seeded randomness, maxTimeMs and level-5 time budget",
+    "depends_on": [
+      "core-apply",
+      "core-in-check"
+    ],
+    "tests": [
+      "tests/engine_legal.test.ts",
+      "tests/engine_behavior.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "engine-mate1",
+    "title": "Engine: levels 2-5 always play mate in 1",
+    "depends_on": [
+      "engine-search"
+    ],
+    "tests": [
+      "tests/engine_mate1.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "engine-mate2",
+    "title": "Engine: levels 4-5 find mate in 2",
+    "depends_on": [
+      "engine-search"
+    ],
+    "tests": [
+      "tests/engine_mate2.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "clock",
+    "title": "Clock: createClock with press/remaining/flagged/pause/resume and increments",
+    "depends_on": [],
+    "tests": [
+      "tests/clock.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "sound",
+    "title": "Sound: soundFor and a Web Audio play() for every SoundKind",
+    "depends_on": [],
+    "tests": [
+      "tests/sound.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-board",
+    "title": "UI: mountApp game screen - board, tap-to-move, targets, last move, status, move list, engine turn with 0.6 s minimum and data-thinking, sound calls",
+    "depends_on": [
+      "core-apply",
+      "core-position-status",
+      "notation-san-out",
+      "sound"
+    ],
+    "tests": [
+      "tests/ui_board.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-rules",
+    "title": "UI: promotion picker, check highlight, game end (checkmate/draws) blocks further moves",
+    "depends_on": [
+      "ui-board",
+      "core-game-status"
+    ],
+    "tests": [
+      "tests/ui_rules.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-flip",
+    "title": "UI: flip control toggles board orientation",
+    "depends_on": [
+      "ui-board"
+    ],
+    "tests": [
+      "tests/ui_flip.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-newgame",
+    "title": "UI: new-game settings (level, color incl. random, time control) applied on new-game; engine moves first when you're Black",
+    "depends_on": [
+      "ui-board"
+    ],
+    "tests": [
+      "tests/ui_newgame.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-undo",
+    "title": "UI: undo (your move + reply, or cancel the pending search), disabled when nothing to undo or in clocked games",
+    "depends_on": [
+      "ui-newgame"
+    ],
+    "tests": [
+      "tests/ui_undo.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-clock",
+    "title": "UI: clocks for timed games - m:ss / tenths display, data-active, increments, engine maxTimeMs (~remaining/30 + increment), clocks saved with the game",
+    "depends_on": [
+      "ui-newgame",
+      "clock"
+    ],
+    "tests": [
+      "tests/ui_clock.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-flag",
+    "title": "UI: running out of time - Time out / timeout-vs-insufficient-material status, clocks stop, data-thinking cleared",
+    "depends_on": [
+      "ui-clock",
+      "core-timeout"
+    ],
+    "tests": [
+      "tests/ui_flag.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-sound",
+    "title": "UI: mute toggle with data-muted, remembered in storage",
+    "depends_on": [
+      "ui-board"
+    ],
+    "tests": [
+      "tests/ui_sound.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-persist",
+    "title": "UI: save and restore the game in progress from storage",
+    "depends_on": [
+      "ui-board"
+    ],
+    "tests": [
+      "tests/ui_persist.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-premove",
+    "title": "UI: one premove while the engine thinks (premoveTargets, data-premove, cancel, play-or-cancel on reply)",
+    "depends_on": [
+      "ui-board",
+      "core-premove-targets"
+    ],
+    "tests": [
+      "tests/ui_premove.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "pwa-install",
+    "title": "PWA: index.html (viewport, manifest, apple tags), manifest.webmanifest, generated PNG icons",
+    "depends_on": [],
+    "tests": [
+      "tests/pwa_install.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "pwa-offline",
+    "title": "PWA: public/sw.js caching the built app, registered from src/app",
+    "depends_on": [
+      "pwa-install"
+    ],
+    "tests": [
+      "tests/pwa_offline.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "pwa-build",
+    "title": "App: entry point (mountApp into the page), engine Web Worker, phone layout; npm run build succeeds",
+    "depends_on": [
+      "pwa-offline",
+      "ui-board",
+      "engine-search"
+    ],
+    "tests": [
+      "tests/pwa_build.test.ts"
+    ],
+    "passes": false
+  }
+]
