@@ -445,6 +445,6 @@
     "tests": [
       "tests/ui_visual.test.ts"
     ],
-    "passes": false
+    "passes": true
   }
 ]
