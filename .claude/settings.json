@@ -1,0 +1,79 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gcloud/**)",
+      "Read(~/.claude/**)",
+      "Read(~/agent-private/**)",
+      "Read(~/learning-long-running-agents/**)",
+      "Edit(/tests/**)",
+      "Edit(/SPEC.md)",
+      "Edit(/tasks.json)",
+      "Edit(/ANSWERS.md)",
+      "Edit(/REVIEW.md)",
+      "Bash(git push *)",
+      "Bash(rm -rf *)",
+      "Bash(sudo *)",
+      "Edit(/src/core/types.ts)",
+      "Edit(/package.json)",
+      "Edit(/package-lock.json)",
+      "Edit(/init.sh)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "allowUnsandboxedCommands": false,
+    "failIfUnavailable": true,
+    "filesystem": {
+      "denyWrite": [
+        "./tests",
+        "./SPEC.md",
+        "./tasks.json",
+        "./ANSWERS.md",
+        "./REVIEW.md",
+        "./src/core/types.ts",
+        "./package.json",
+        "./package-lock.json",
+        "./init.sh"
+      ],
+      "denyRead": [
+        "~/agent-private",
+        "~/learning-long-running-agents",
+        "~/.ssh",
+        "~/.aws",
+        "~/.config/gcloud",
+        "~/.claude"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "pypi.org",
+        "files.pythonhosted.org"
+      ]
+    }
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect_oracle.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no_regressions.py"
+          }
+        ]
+      }
+    ]
+  }
+}

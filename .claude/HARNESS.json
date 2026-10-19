@@ -1,0 +1,11 @@
+{
+  "framework_commit": "7e399fd",
+  "profile": "worker",
+  "project": "chess-lab",
+  "protected": [
+    "src/core/types.ts",
+    "package.json",
+    "package-lock.json",
+    "init.sh"
+  ]
+}
