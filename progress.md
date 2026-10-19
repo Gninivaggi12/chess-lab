@@ -9,3 +9,5 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Not wired yet: the "low-time" sound trigger and the mute toggle belong to the UI tasks.
 - Session (notation agent): added src/notation/index.ts with toSAN, built only on the core public API (legalMoves/applyMove/inCheck/positionStatus). tests/san_out.test.ts passes (2313); claimed notation-san-out.
 - Next in notation: fromSAN and toPGN (src/notation/index.ts to extend).
+- Session (notation-san-in): added fromSAN to src/notation/index.ts (strips trailing +#!?, 0-0 -> O-O, regex parse, filters legalMoves; null unless exactly one match; "x" must agree with whether the move captures). san_in + san_out tests pass (8041); claimed notation-san-in.
+- Next: notation-pgn-out, then notation-pgn-in.

@@ -45,3 +45,32 @@ export function toSAN(fen: string, uci: Uci): string {
   if (inCheck(next)) san += positionStatus(next).reason === "checkmate" ? "#" : "+";
   return san;
 }
+
+export function fromSAN(fen: string, san: string): Uci | null {
+  const s = san.trim().replace(/[+#!?]+$/, "").replace(/0/g, "O");
+  const moves = legalMoves(fen);
+  let found: Uci[];
+  if (s === "O-O" || s === "O-O-O") {
+    const side = fen.split(" ")[1];
+    const to = (s === "O-O" ? "g" : "c") + (side === "w" ? "1" : "8");
+    found = moves.filter(m => m.slice(2, 4) === to && pieceAt(fen, m.slice(0, 2)).toLowerCase() === "k"
+      && Math.abs(m.charCodeAt(0) - m.charCodeAt(2)) === 2);
+  } else {
+    const m = /^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(?:=?([NBRQ]))?$/.exec(s);
+    if (!m) return null;
+    const [, p, df, dr, x, to, promo] = m;
+    const piece = (p ?? "P").toLowerCase();
+    found = moves.filter(u => {
+      const from = u.slice(0, 2);
+      if (u.slice(2, 4) !== to || pieceAt(fen, from).toLowerCase() !== piece) return false;
+      if (df && from[0] !== df) return false;
+      if (dr && from[1] !== dr) return false;
+      if ((u[4] ?? "") !== (promo ? promo.toLowerCase() : "")) return false;
+      const capture = pieceAt(fen, to) !== "" || (piece === "p" && from[0] !== to[0]);
+      if (!!x !== capture) return false;
+      if (piece === "p" && !x && df) return false;
+      return true;
+    });
+  }
+  return found.length === 1 ? found[0] : null;
+}

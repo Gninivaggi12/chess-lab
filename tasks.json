@@ -188,7 +188,7 @@
     "tests": [
       "tests/san_in.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "notation-pgn-out",
