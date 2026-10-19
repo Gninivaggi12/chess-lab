@@ -18,3 +18,5 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Next: notation-pgn-in (parsePGN).
 - Session (notation-pgn-in): added parsePGN to src/notation/index.ts (tag-pair regex with escaped quotes, single-pass movetext scanner skipping {} and ; comments, NAGs, nested variations; stops at the result token; throws on illegal SAN). pgn_in, pgn_out, san_in tests pass (5908); claimed.
 - Nothing broke. Notation area is now complete.
+- Session (engine-mate2, agent b): no code change; tests/engine_mate2 (plus engine_legal/behavior/mate1, clock, sound) pass with the existing search; claimed engine-mate2.
+- Next for engine: nothing pending; the FEN-string-based search could get a private mailbox board if level 5 is judged weak.
