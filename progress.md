@@ -18,3 +18,6 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Next: notation-pgn-in (parsePGN).
 - Session (notation-pgn-in): added parsePGN to src/notation/index.ts (tag-pair regex with escaped quotes, single-pass movetext scanner skipping {} and ; comments, NAGs, nested variations; stops at the result token; throws on illegal SAN). pgn_in, pgn_out, san_in tests pass (5908); claimed.
 - Nothing broke. Notation area is now complete.
+- Session (ui-board): added src/ui/index.ts (mountApp: board, tap-to-move, targets, last move, status, SAN move list, engine reply with 0.6 s minimum + data-thinking, sound calls), src/app/engine-worker.ts (default engine in a Worker), src/app/main.ts (wired into index.html). ui_board + pwa tests pass.
+- Stubs for later tasks: promotion always becomes a queen (ui-rules adds the picker); level/color fixed at 3/White (ui-newgame); no controls, clocks, persistence yet. render() rebuilds the DOM each time, so extend it rather than caching nodes.
+- Next: ui-rules, ui-flip, ui-newgame.
