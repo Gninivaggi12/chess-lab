@@ -9,12 +9,16 @@ export interface Clock {
 }
 
 export function createClock(
-  { initialMs, incrementMs }: { initialMs: number; incrementMs: number },
+  { initialMs, incrementMs, restore }: {
+    initialMs: number; incrementMs: number;
+    // Resume a saved game: remaining times and whose turn it is (the clock has started).
+    restore?: { w: number; b: number; turn: Color };
+  },
   now: () => number,
 ): Clock {
-  const left: Record<Color, number> = { w: initialMs, b: initialMs };
-  let started = false;
-  let turn: Color = "w";   // the side whose time runs (or would run, when paused)
+  const left: Record<Color, number> = restore ? { w: restore.w, b: restore.b } : { w: initialMs, b: initialMs };
+  let started = !!restore;
+  let turn: Color = restore ? restore.turn : "w";   // the side whose time runs (or would run, when paused)
   let paused = false;
   let since = now();       // when the running side's time was last settled
 
