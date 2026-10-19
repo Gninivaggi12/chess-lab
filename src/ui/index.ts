@@ -1,5 +1,5 @@
 import type { Color, SoundKind, Square, Uci } from "../core/types.ts";
-import { INITIAL_FEN, applyMove, gameStatus, inCheck, legalMoves, timeoutResult } from "../core/index.ts";
+import { INITIAL_FEN, applyMove, gameStatus, inCheck, legalMoves, premoveTargets, timeoutResult } from "../core/index.ts";
 import { toSAN } from "../notation/index.ts";
 import { soundFor, play } from "../sound/index.ts";
 import { createClock, type Clock } from "../clock/index.ts";
@@ -57,6 +57,7 @@ export function mountApp(root: HTMLElement, deps: {
   const sans: string[] = [];
   const ucis: Uci[] = [];
   let promoting: { from: Square; to: Square } | null = null;
+  let premove: { from: Square; to: Square; promo?: string } | null = null;
   let lastMove: Uci | null = null;
   let selected: Square | null = null;
   let human: Color = "w";
@@ -149,6 +150,7 @@ export function mountApp(root: HTMLElement, deps: {
     over = true;
     clock!.pause();
     thinking = false;
+    premove = null;
     selected = null;
     promoting = null;
     gameId++;
@@ -169,7 +171,9 @@ export function mountApp(root: HTMLElement, deps: {
 
   function render() {
     const board = pieces();
-    const targets = selected ? legalMoves(fen).filter((m) => m.startsWith(selected!)).map((m) => m.slice(2, 4)) : [];
+    const targets = !selected ? []
+      : thinking ? premoveTargets(fen, selected)
+      : legalMoves(fen).filter((m) => m.startsWith(selected!)).map((m) => m.slice(2, 4));
     const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
     const rows = flipped ? [...ranks].reverse() : ranks;
     const cols = flipped ? [...FILES].reverse() : [...FILES];
@@ -183,6 +187,7 @@ export function mountApp(root: HTMLElement, deps: {
         el.setAttribute("data-square", sq);
         if (selected === sq) el.setAttribute("data-selected", "");
         if (targets.includes(sq)) el.setAttribute("data-target", "");
+        if (premove && (sq === premove.from || sq === premove.to)) el.setAttribute("data-premove", "");
         if (lastMove && (sq === lastMove.slice(0, 2) || sq === lastMove.slice(2, 4))) el.setAttribute("data-last-move", "");
         const p = board.get(sq);
         if (p) {
@@ -299,6 +304,13 @@ export function mountApp(root: HTMLElement, deps: {
 
   function choosePromotion(piece: string) {
     if (!promoting || over) return;
+    if (thinking) {
+      premove = { ...promoting, promo: piece };
+      promoting = null;
+      selected = null;
+      render();
+      return;
+    }
     const uci = promoting.from + promoting.to + piece;
     promoting = null;
     playMove(uci);
@@ -307,8 +319,10 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function tap(sq: Square) {
-    if (over || thinking || turn() !== human) return;
+    if (over) return;
     if (promoting) { promoting = null; selected = null; render(); return; }
+    if (thinking) { tapPremove(sq); return; }
+    if (turn() !== human) return;
     const moves = legalMoves(fen);
     const move = selected && moves.find((m) => m.startsWith(selected + sq));
     if (move && move.length === 5) {
@@ -322,6 +336,28 @@ export function mountApp(root: HTMLElement, deps: {
     render();
   }
 
+  function tapPremove(sq: Square) {
+    const own = pieces().get(sq)?.[0] === human;
+    if (selected && sq !== selected && premoveTargets(fen, selected).includes(sq)) {
+      const pawn = pieces().get(selected) === human.concat("P");
+      if (pawn && (sq[1] === "8" || sq[1] === "1")) {
+        promoting = { from: selected, to: sq };
+      } else {
+        premove = { from: selected, to: sq };
+        selected = null;
+      }
+    } else if (premove && sq === premove.from) {
+      premove = null;
+      selected = null;
+    } else if (own && sq !== selected) {
+      selected = sq;
+    } else {
+      selected = null;
+      if (!own) premove = null;
+    }
+    render();
+  }
+
   function undoMove() {
     if (clocked || ucis.length <= (human === "b" ? 1 : 0)) return;
     // Cancel a pending engine search (its reply is dropped via gameId) and take back
@@ -330,6 +366,7 @@ export function mountApp(root: HTMLElement, deps: {
     gameId++;
     if (timer) { clearTimeout(timer); timer = null; }
     thinking = false;
+    premove = null;
     ucis.length -= count;
     sans.length -= count;
     fen = INITIAL_FEN;
@@ -353,6 +390,7 @@ export function mountApp(root: HTMLElement, deps: {
       incrementMs = 0;
     }
     flagResult = null;
+    premove = null;
     gameId++;
     if (timer) { clearTimeout(timer); timer = null; }
     fen = INITIAL_FEN;
@@ -386,6 +424,13 @@ export function mountApp(root: HTMLElement, deps: {
         timer = null;
         thinking = false;
         playMove(uci);
+        const queued = premove;
+        premove = null;
+        const next = queued ? queued.from + queued.to + (queued.promo ?? "") : null;
+        if (next && !over && legalMoves(fen).includes(next)) {
+          playMove(next);
+          engineTurn();
+        }
         render();
       }, Math.max(0, MIN_THINK_MS - (now() - started)));
     }, () => {
