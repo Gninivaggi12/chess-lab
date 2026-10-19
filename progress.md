@@ -25,3 +25,5 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Next: ui-rules, ui-flip, ui-newgame.
 - Session (ui-rules): src/ui/index.ts now keeps a `ucis` list and uses gameStatus(INITIAL_FEN, ucis) for status/game end (threefold works); promotion shows a `[data-promotion-choice]` picker (state `promoting`, move played on choice, any board tap cancels); `data-check` on the side-to-move king when inCheck. ui_rules, ui_board, pwa tests pass; claimed ui-rules.
 - Note for later tasks: gameStatus is computed from INITIAL_FEN; ui-newgame/persist must pass the real start FEN if it can differ. Next: ui-flip, ui-newgame.
+- Session (ui-flip, agent b): src/ui/index.ts has a `flipped` state (starts as human === "b"), and render() adds a `controls` div with a `data-action="flip"` button that toggles it. ui_flip, ui_board, ui_rules and pwa tests pass; claimed ui-flip.
+- Note for ui-newgame: `human` is still a const "w"; when it becomes settable, reset `flipped = human === "b"` on new game and put the other controls in the same `controls` div.

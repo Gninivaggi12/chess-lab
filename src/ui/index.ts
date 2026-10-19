@@ -45,6 +45,7 @@ export function mountApp(root: HTMLElement, deps: {
   let lastMove: Uci | null = null;
   let selected: Square | null = null;
   const human: Color = "w";
+  let flipped = human === "b";
   const level = 3;
   let over = false;
   let thinking = false;
@@ -79,7 +80,6 @@ export function mountApp(root: HTMLElement, deps: {
   function render() {
     const board = pieces();
     const targets = selected ? legalMoves(fen).filter((m) => m.startsWith(selected!)).map((m) => m.slice(2, 4)) : [];
-    const flipped = human === "b";
     const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
     const rows = flipped ? [...ranks].reverse() : ranks;
     const cols = flipped ? [...FILES].reverse() : [...FILES];
@@ -130,7 +130,13 @@ export function mountApp(root: HTMLElement, deps: {
         picker.append(b);
       }
     }
-    root.replaceChildren(boardEl, picker, status, list);
+    const controls = document.createElement("div");
+    const flip = document.createElement("button");
+    flip.setAttribute("data-action", "flip");
+    flip.textContent = "Flip";
+    flip.addEventListener("click", () => { flipped = !flipped; render(); });
+    controls.append(flip);
+    root.replaceChildren(boardEl, picker, status, list, controls);
   }
 
   function playMove(uci: Uci) {
