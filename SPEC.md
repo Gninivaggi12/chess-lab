@@ -49,13 +49,15 @@ Positions go in and out as FEN strings, so every function is testable with nothi
 | Export | Behavior |
 |---|---|
 | `INITIAL_FEN` | `"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"` |
-| `isValidFEN(fen): boolean` | Six fields, 8 ranks of 8 squares, exactly one king per side, no pawns on ranks 1/8, at most 8 pawns and 16 pieces per side, the side **not** to move isn't in check, every castling right has its king and rook on their original squares, an en passant square is on rank 3/6 behind a pawn that could just have double-pushed. Never throws |
+| `isValidFEN(fen): boolean` | Six fields, 8 ranks of 8 squares, exactly one king per side, no pawns on ranks 1/8, at most 8 pawns and 16 pieces per side, the side **not** to move isn't in check, every castling right has its king and rook on their original squares, an en passant square is on rank 3/6 behind a pawn that could just have double-pushed, the halfmove clock is an integer ≥ 0 and the fullmove number an integer ≥ 1. Never throws |
 | `normalizeFEN(fen): string` | Canonical form. The en passant field is kept only if an en passant capture is **legal** (otherwise `-`). Throws `Error` on invalid FEN |
 | `legalMoves(fen): Uci[]` | Every legal move, any order. Castling is the king's move (`e1g1`). Includes en passant, all four promotions, and every pin and check rule |
 | `applyMove(fen, uci): string` | The resulting normalized FEN (clocks, castling rights, en passant updated). Throws `Error` on an illegal move |
 | `inCheck(fen): boolean` | Side to move is in check |
 | `perft(fen, depth): number` | Number of leaf nodes of the legal move tree to `depth` |
+| `premoveTargets(fen, square): Square[]` | Destinations for the piece on `square` (either color) by its movement on an **empty** board: sliders along their lines to the edge, knight jumps, king one square, plus castling (`e1`→`g1`/`c1`, `e8`→`g8`/`c8`) if the king is on its start square and that castling right is still in the FEN; pawns one forward, two forward from their start rank, and one diagonally forward. Any order. `[]` for an empty square |
 | `positionStatus(fen)` | `{ over: boolean, result: Result, reason?: EndReason }` using the position alone: checkmate, stalemate, insufficient material, fifty-move rule (halfmove clock ≥ 100) |
+| `timeoutResult(fen, flagged: Color)` | When `flagged` runs out of time in this position: `{ result: "1-0" \| "0-1", reason: "timeout" }`, or `{ result: "1/2-1/2", reason: "timeout-vs-insufficient-material" }` when the opponent couldn't mate (see Clock) |
 | `gameStatus(startFen, moves: Uci[])` | Same shape, for a whole game. Adds **threefold repetition**: the same position (placement, side to move, castling rights, and en passant square **only if a capture is legal**) occurs a third time |
 
 **Draw rules are automatic** (as on chess.com): threefold repetition and the fifty-move rule end the game; nobody has to claim them. **Insufficient material:** besides the kings there is only one knight in total, or only bishops, all on squares of one color (K vs K, K+N vs K, K+B vs K, K+B vs K+B same color). Two knights, or a knight against anything, is not insufficient: mate is possible.
@@ -68,17 +70,17 @@ Positions go in and out as FEN strings, so every function is testable with nothi
 |---|---|
 | `toSAN(fen, uci): string` | Standard algebraic notation: `Nf3`, `exd5`, `O-O`, `e8=Q`, minimal disambiguation (file, then rank, then both), `+` for check, `#` for mate. Throws on an illegal move |
 | `fromSAN(fen, san): Uci \| null` | Parses SAN, tolerating a missing or extra `+`/`#`, `0-0` for castling, and annotations (`!`, `?`, `!?`). `null` if illegal or ambiguous |
-| `toPGN(game)` | `game` = `{ startFen, moves: Uci[], headers: Record<string,string> }`. Seven-tag roster first, `[FEN]` + `[SetUp "1"]` when not starting from the initial position, numbered SAN move text, result at the end |
-| `parsePGN(pgn)` | Back to `{ startFen, moves, headers }`. Handles comments `{...}`, NAGs `$1`, variations `(...)` (skipped), and multiple-line move text. Throws on an illegal move |
+| `toPGN(game)` | `game` = `{ startFen, moves: Uci[], headers: Record<string,string> }`. Header lines `[Name "value"]`: the seven-tag roster first, in order (`Event`, `Site`, `Date`, `Round`, `White`, `Black`, `Result`; missing ones default to `?`, `????.??.??` for Date, `*` for Result), then `SetUp "1"` and `FEN` when not starting from the initial position, then any other headers in the order given. A blank line, then numbered SAN move text (`1. e4 e5 2. Nf3`, or `1... e5` when Black moves first) ending with the result. Line breaks inside the move text are free (tests compare its tokens) |
+| `parsePGN(pgn)` | Back to `{ startFen, moves, headers }`: `headers` holds every tag pair as written (including `FEN`/`SetUp`), `startFen` is the `FEN` header or the initial position, `moves` is the main line. Handles comments `{...}` and `;` to end of line, NAGs `$1`, variations `(...)` (skipped, may nest), move numbers with `.` or `...`, and multiple-line move text. Reads the first game only. Throws on an illegal move |
 
 ### Engine (`src/engine/index.ts`)
 
 | Export | Behavior |
 |---|---|
-| `bestMove(fen, level: 1-5, maxTimeMs?: number): Uci` | A legal move. Throws if there are none. With `maxTimeMs`, returns within that time (plus 50 ms) at any level |
-| | Level 1: a mostly random legal move (for beginners). Higher levels search deeper. Level 5 must answer within 2 s on the test machine |
+| `bestMove(fen, level: 1-5, maxTimeMs?: number): Uci` | A legal move. Throws if there are none. With `maxTimeMs`, returns within that time (plus 150 ms) at any level |
+| | Level 1: a mostly random legal move (for beginners). Higher levels search deeper. Level 5 must answer within 2 s on the test machine (tests allow 2.5 s, since several agents may share it) |
 | | Every level ≥ 2 plays mate in 1 when available. Level ≥ 4 finds mate in 2 |
-| | Deterministic for a given position and level (seeded, so tests are repeatable) |
+| | Deterministic for a given position and level when `maxTimeMs` isn't given (seeded randomness), so tests are repeatable. A time limit may cut the search short, so results under one can vary |
 
 The level-5 target is a solid casual opponent (roughly the strength of a 1300–1600 online player), judged by Gio playing it, not by tests.
 
@@ -86,20 +88,43 @@ The level-5 target is a solid casual opponent (roughly the strength of a 1300–
 
 ### UI (`src/ui/`, `src/app/`)
 
+Tests start the app with fakes for everything outside the page:
+
+```ts
+// src/ui/index.ts
+export interface EngineLike { bestMove(fen: string, level: number, maxTimeMs?: number): Promise<Uci>; }
+export interface SoundLike { play(kind: SoundKind): void; }
+export function mountApp(root: HTMLElement, deps?: {
+  engine?: EngineLike;      // default: the engine in a Web Worker
+  sound?: SoundLike;        // default: Web Audio
+  storage?: Storage;        // default: localStorage
+  now?: () => number;       // default: performance.now (clock time)
+  random?: () => number;    // default: Math.random (random color)
+}): { destroy(): void };
+```
+
+Timing uses `setTimeout`/`setInterval`, so tests drive it with fake timers. Moving is by tapping: a `click` on the piece's square element, then on the destination's. Dragging also works, but only Gio's play tests it. On first launch (nothing saved), a game starts with the default settings.
+
+
 The oracle drives the UI through these attributes, so they're part of the interface:
 
 | Element | Contract |
 |---|---|
 | Board | 64 elements with `data-square="e4"`; a piece inside has `data-piece="wN"` (color + uppercase type) |
-| Moving | Tap a piece, then a destination; or drag. The selected square gets `data-selected`, legal destinations get `data-target`. An illegal tap clears the selection |
+| Moving | Tap a piece, then a destination; or drag. The selected square gets `data-selected`, legal destinations get `data-target`. Tapping another of your pieces selects it instead; any other tap that isn't a legal destination clears the selection. The opponent's pieces can't be selected |
 | Promotion | A picker (`data-promotion-choice="q"` etc.) appears; the move happens after the choice |
 | Last move, check | `data-last-move` on both squares; `data-check` on the king's square when in check |
 | Controls | `data-action="new-game" \| "undo" \| "flip"`; level picker `data-level` (1–5); color picker (white / black / random) |
-| Status | `data-status` text: whose turn, "Checkmate · White wins", "Draw · threefold repetition", etc. |
+| Status | `data-status` text, exactly one of: `White to move`, `Black to move`, `Checkmate · White wins`, `Checkmate · Black wins`, `Time out · White wins`, `Time out · Black wins`, `Draw · stalemate`, `Draw · insufficient material`, `Draw · threefold repetition`, `Draw · fifty-move rule`, `Draw · timeout vs insufficient material`. After the game ends, the board accepts no moves and the clocks stop |
 | Move list | `data-move-list` showing SAN in numbered pairs |
-| Engine | Runs in a Web Worker so the board never freezes; `data-thinking` while it searches |
+| Engine | Runs in a Web Worker so the board never freezes. The root element has `data-thinking` from your move until the engine's move appears, or the game ends (e.g. your opponent's flag falls while it thinks). The app calls `engine.bestMove(fen, level, maxTimeMs)` with `maxTimeMs` only in clocked games |
+| New game | Settings are `<select>` elements: `select[data-level]` (`1`–`5`, default `3`), `select[data-color]` (`w`, `b`, `random`; default `w`), `select[data-time-control]` (`none`, `1+0`, `3+0`, `3+2`, `5+0`, `10+0`, `15+10`, `30+0`, `custom`; default `none`), with `input[data-custom-minutes]` and `input[data-custom-increment]` for custom. They take effect when `data-action="new-game"` is tapped. `random` is White when `random() < 0.5`. If you're Black, the engine moves first |
+| Orientation | Squares are in display order in the DOM: `a8` first with White at the bottom, `h1` first when flipped. Your color starts at the bottom; `flip` toggles it |
+| Undo | Takes back your last move and the engine's reply (or just your move, cancelling the search, if the engine is still thinking). The undo control is `disabled` in clocked games and when there's nothing to undo |
+| Move list | `[data-move-list]` holds one element per half-move with `data-ply="1"`, `"2"`, …, text = its SAN |
+| Sounds | After every move (yours and the engine's) the app calls `sound.play(soundFor(san, gameOver))`, unless muted. `data-action="mute"` toggles muting; it has `data-muted` when muted, remembered in storage |
 | Persistence | The game in progress survives closing the app (`localStorage`), including clocks (paused while the app is closed) |
-| Clock | `data-clock="w"` / `"b"` showing the time; `data-time-control` picker |
+| Clock | `data-clock="w"` / `"b"` text `m:ss` (`5:00`, `12:03`), or `0:09.4` under 10 s; the running one has `data-active`. Hidden (empty) when the time control is `none` |
 
 ### Clock (`src/clock/index.ts`)
 
@@ -108,7 +133,7 @@ Pure logic with an injected time source, so tests control time exactly.
 | Export | Behavior |
 |---|---|
 | `createClock({ initialMs, incrementMs }, now: () => number)` | Both sides start with `initialMs`. Nobody's time runs until White's first move is made |
-| `clock.press(color)` | Ends `color`'s turn: stops its time, **adds the increment to it**, starts the other side's. Pressing for the side whose time isn't running is ignored |
+| `clock.press(color)` | Ends `color`'s turn: stops its time, **adds the increment to it**, starts the other side's. Before the first move only `press("w")` counts; after that, pressing for the side whose time isn't running is ignored |
 | `clock.remaining(color)` | Milliseconds left, never below 0 |
 | `clock.flagged()` | The color whose time hit 0, or `null` |
 | `clock.pause()` / `clock.resume()` | For undo, app backgrounding and game end |
@@ -120,9 +145,9 @@ Pure logic with an injected time source, so tests control time exactly.
 - king + exactly one knight, and the side that ran out has nothing but its king and queens; or
 - king + bishops only, there are no pawns or knights on the board, and every bishop on the board stands on squares of one color.
 
-Anything else is a loss on time, e.g. K+N against K+pawn (the pawn can block its own king in). The status adds the `EndReason` `"timeout"` (loss) or `"timeout-vs-insufficient-material"` (draw). These rules match `python-chess`'s `has_insufficient_material` (checked 2026-10-19).
+`timeoutResult(fen, flagged: Color)` in core returns `{ result, reason }` for this rule. Anything else is a loss on time, e.g. K+N against K+pawn (the pawn can block its own king in). The status adds the `EndReason` `"timeout"` (loss) or `"timeout-vs-insufficient-material"` (draw). These rules match `python-chess`'s `has_insufficient_material` (checked 2026-10-19).
 
-In the app, the clock shows `m:ss`, switching to tenths (`0:09.4`) under 10 s, and highlights the side to move. Undo isn't available in clocked games.
+In the app, the clock shows `m:ss`, switching to tenths (`0:09.4`) under 10 s, always **rounded down**, updated at least every 100 ms, and highlights the side to move. Undo isn't available in clocked games.
 
 ### Sound (`src/sound/index.ts`)
 
@@ -138,13 +163,15 @@ A mute toggle (`data-action="mute"`) is remembered between sessions. iPhones onl
 While the engine is thinking, you can queue **one** move in advance.
 
 - A premove is allowed if the square holds your piece and the destination fits that piece's movement on an **empty** board: sliding pieces along their lines, knight jumps, king one square or castling, pawns one or two forward or one diagonally. Whether it's legal is checked only when it's played.
-- Both squares get `data-premove`. Tapping your piece again, or tapping an empty square that isn't a premove destination, cancels it. A pawn premove to the last rank asks for the promotion piece right away.
+- While the engine thinks, tapping your piece shows its `premoveTargets` as `data-target`; tapping one queues the premove and gives both squares `data-premove`. Tapping your piece again, or tapping an empty square that isn't a premove destination, cancels it. A pawn premove to the last rank asks for the promotion piece right away.
 - When the engine moves: if the premove is now legal, it plays immediately (your clock still gets pressed, so the increment applies); otherwise it's cancelled.
 
 ### Phone app (PWA)
 
-- `manifest.webmanifest` with name, short name, `display: standalone`, theme colors, and 192 px + 512 px icons; iOS `apple-touch-icon` and `apple-mobile-web-app-capable` meta tags.
-- A service worker that caches the built app so it works offline after the first visit.
+- `index.html` at the repo root (Vite's entry) with a viewport meta tag, `<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/apple-touch-icon.png">` and `<meta name="apple-mobile-web-app-capable" content="yes">`.
+- `public/manifest.webmanifest` with `name`, `short_name`, `display: "standalone"`, `start_url`, `theme_color`, `background_color`, and icons `public/icon-192.png` (192×192) and `public/icon-512.png` (512×512); `public/apple-touch-icon.png` is 180×180. Icons are real PNGs drawn by a script or by hand (no downloaded artwork).
+- `public/sw.js`, a service worker registered by the app, that caches the built app so it works offline after the first visit.
+- `npm run build` succeeds.
 - Layout fits a phone screen in portrait without scrolling; the board is as wide as the screen; touch targets are at least 44 px.
 
 ## Out of scope
