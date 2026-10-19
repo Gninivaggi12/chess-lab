@@ -24,8 +24,8 @@ describe("installable", () => {
   test("index.html has the viewport, manifest and iOS tags", () => {
     const html = read("index.html");
     expect(html).toMatch(/<meta[^>]+name=["']viewport["']/);
-    expect(html).toMatch(/<link[^>]+rel=["']manifest["'][^>]+href=["']\/manifest\.webmanifest["']/);
-    expect(html).toMatch(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["']\/apple-touch-icon\.png["']/);
+    expect(html).toMatch(/<link[^>]+rel=["']manifest["'][^>]+href=["'](?:\.?\/)?manifest\.webmanifest["']/);
+    expect(html).toMatch(/<link[^>]+rel=["']apple-touch-icon["'][^>]+href=["'](?:\.?\/)?apple-touch-icon\.png["']/);
     expect(html).toMatch(/<meta[^>]+name=["']apple-mobile-web-app-capable["'][^>]+content=["']yes["']/);
   });
 

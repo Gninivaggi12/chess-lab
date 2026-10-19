@@ -168,10 +168,11 @@ While the engine is thinking, you can queue **one** move in advance.
 
 ### Phone app (PWA)
 
-- `index.html` at the repo root (Vite's entry) with a viewport meta tag, `<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/apple-touch-icon.png">` and `<meta name="apple-mobile-web-app-capable" content="yes">`.
+- `index.html` at the repo root (Vite's entry) with a viewport meta tag, `<link rel="manifest" href="./manifest.webmanifest">`, `<link rel="apple-touch-icon" href="./apple-touch-icon.png">` and `<meta name="apple-mobile-web-app-capable" content="yes">`.
 - `public/manifest.webmanifest` with `name`, `short_name`, `display: "standalone"`, `start_url`, `theme_color`, `background_color`, and icons `public/icon-192.png` (192×192) and `public/icon-512.png` (512×512); `public/apple-touch-icon.png` is 180×180. Icons are real PNGs drawn by a script or by hand (no downloaded artwork).
 - `public/sw.js`, a service worker registered by the app, that caches the built app so it works offline after the first visit.
 - `npm run build` succeeds.
+- **The built app works from any folder, not just the site root.** GitHub Pages serves it at `https://<user>.github.io/chess-lab/`, so every URL in the page, the manifest (`start_url`, `scope`, icons), the service worker's cache list and the service-worker registration must be relative (e.g. Vite `base: "./"`, `./sw.js`, `start_url: "./"`). Root paths like `/sw.js` point outside the app there. (Gio, 2026-10-19: hosted on GitHub Pages so friends can install it.)
 - Layout fits a phone screen in portrait without scrolling; the board is as wide as the screen; touch targets are at least 44 px.
 
 ## Out of scope

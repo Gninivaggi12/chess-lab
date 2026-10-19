@@ -415,5 +415,16 @@
       "tests/pwa_build.test.ts"
     ],
     "passes": true
+  },
+  {
+    "id": "pwa-subpath",
+    "title": "PWA: the built app works under a sub-path (GitHub Pages): relative URLs in index.html, manifest, service worker and its registration",
+    "depends_on": [
+      "pwa-build"
+    ],
+    "tests": [
+      "tests/pwa_subpath.test.ts"
+    ],
+    "passes": false
   }
 ]
