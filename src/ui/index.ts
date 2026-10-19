@@ -2,12 +2,22 @@ import type { Color, SoundKind, Square, Uci } from "../core/types.ts";
 import { INITIAL_FEN, applyMove, gameStatus, inCheck, legalMoves } from "../core/index.ts";
 import { toSAN } from "../notation/index.ts";
 import { soundFor, play } from "../sound/index.ts";
+import { createClock, type Clock } from "../clock/index.ts";
 
 export interface EngineLike { bestMove(fen: string, level: number, maxTimeMs?: number): Promise<Uci>; }
 export interface SoundLike { play(kind: SoundKind): void; }
 
 const MIN_THINK_MS = 600;
 const FILES = "abcdefgh";
+
+function formatClock(ms: number): string {
+  if (ms < 10_000) {
+    const tenths = Math.floor(ms / 100);
+    return `0:0${Math.floor(tenths / 10)}.${tenths % 10}`;
+  }
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 // Runs the engine in a Web Worker (src/app/engine-worker.ts).
 function workerEngine(): EngineLike {
@@ -50,6 +60,8 @@ export function mountApp(root: HTMLElement, deps: {
   // Pending settings, applied when new-game is tapped. Time control is stored for the clock task.
   const settings = { level: "3", color: "w", timeControl: "none", customMinutes: "10", customIncrement: "0" };
   let clocked = false;
+  let clock: Clock | null = null;
+  let incrementMs = 0;
   let over = false;
   let thinking = false;
   let gameId = 0;
@@ -79,6 +91,16 @@ export function mountApp(root: HTMLElement, deps: {
     };
     return `Draw · ${why[s.reason ?? ""] ?? s.reason}`;
   }
+
+  function updateClocks() {
+    for (const c of ["w", "b"] as Color[]) {
+      const el = root.querySelector(`[data-clock="${c}"]`);
+      if (!el) continue;
+      el.textContent = clock ? formatClock(clock.remaining(c)) : "";
+      el.toggleAttribute("data-active", !!clock && !over && ucis.length > 0 && turn() === c);
+    }
+  }
+  const ticker = setInterval(updateClocks, 50);
 
   function render() {
     const board = pieces();
@@ -176,17 +198,27 @@ export function mountApp(root: HTMLElement, deps: {
     undo.disabled = clocked || ucis.length <= (human === "b" ? 1 : 0);
     undo.addEventListener("click", undoMove);
     controls.append(flip, undo);
-    root.replaceChildren(boardEl, picker, status, list, controls);
+    const clockEl = (c: Color) => {
+      const el = document.createElement("div");
+      el.setAttribute("data-clock", c);
+      return el;
+    };
+    const top = clockEl(flipped ? "w" : "b");
+    const bottom = clockEl(flipped ? "b" : "w");
+    root.replaceChildren(top, boardEl, bottom, picker, status, list, controls);
+    updateClocks();
   }
 
   function playMove(uci: Uci) {
     const san = toSAN(fen, uci);
+    clock?.press(turn());
     fen = applyMove(fen, uci);
     sans.push(san);
     ucis.push(uci);
     lastMove = uci;
     selected = null;
     over = gameStatus(INITIAL_FEN, ucis).over;
+    if (over) clock?.pause();
     sound.play(soundFor(san, over));
   }
 
@@ -236,6 +268,15 @@ export function mountApp(root: HTMLElement, deps: {
 
   function startNewGame() {
     clocked = settings.timeControl !== "none";
+    if (clocked) {
+      const custom = settings.timeControl === "custom";
+      const [m, i] = custom ? [settings.customMinutes, settings.customIncrement] : settings.timeControl.split("+");
+      incrementMs = (Number(i) || 0) * 1000;
+      clock = createClock({ initialMs: (Number(m) || 0) * 60_000, incrementMs }, now);
+    } else {
+      clock = null;
+      incrementMs = 0;
+    }
     gameId++;
     if (timer) { clearTimeout(timer); timer = null; }
     fen = INITIAL_FEN;
@@ -258,7 +299,12 @@ export function mountApp(root: HTMLElement, deps: {
     thinking = true;
     const id = gameId;
     const started = now();
-    engine.bestMove(fen, level).then((uci) => {
+    let limit: number | undefined;
+    if (clock) {
+      const left = clock.remaining(turn());
+      limit = Math.max(50, Math.min(left / 30 + incrementMs, left * 0.8));
+    }
+    engine.bestMove(fen, level, limit).then((uci) => {
       if (id !== gameId) return;
       timer = setTimeout(() => {
         timer = null;
@@ -277,6 +323,7 @@ export function mountApp(root: HTMLElement, deps: {
   return {
     destroy() {
       gameId++;
+      clearInterval(ticker);
       if (timer) clearTimeout(timer);
       root.replaceChildren();
     },
