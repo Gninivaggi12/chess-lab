@@ -2,6 +2,8 @@
 
 Each session appends 3-5 lines: what it did, what broke, what's next.
 
+- Session (pwa-build, agent a): no code change; init.sh ran and pwa_build, pwa_install and pwa_offline tests pass with the existing vite config, index.html (loads src/app/main.ts) and public/ assets. Claimed pwa-build. Nothing broke; no other tasks in my scope.
+
 - Session (core agent): wrote all of src/core/index.ts (mailbox board, pseudo-legal gen + legality by king-attack test, FEN, apply, status, timeout, premove). All 14 core tasks' test files pass (16 files, 10511 tests); all claimed.
 - Nothing broke. Next: other areas (notation, engine, clock, sound, ui, app) belong to the other agent / later sessions.
 - Session (clock/sound/pwa agent): built src/clock, src/sound (soundFor + Web Audio play), index.html, public/manifest.webmanifest, public/sw.js, src/app/register-sw.ts, and scripts/make-icons.mjs (generates the PNG icons in public/; rerun with `node scripts/make-icons.mjs`). Tests for clock, sound, pwa-install, pwa-offline and pwa-build pass.
