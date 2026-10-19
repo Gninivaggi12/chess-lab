@@ -20,3 +20,6 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Nothing broke. Notation area is now complete.
 - Session (engine-mate2, agent b): no code change; tests/engine_mate2 (plus engine_legal/behavior/mate1, clock, sound) pass with the existing search; claimed engine-mate2.
 - Next for engine: nothing pending; the FEN-string-based search could get a private mailbox board if level 5 is judged weak.
+- Session (ui-board): added src/ui/index.ts (mountApp: board, tap-to-move, targets, last move, status, SAN move list, engine reply with 0.6 s minimum + data-thinking, sound calls), src/app/engine-worker.ts (default engine in a Worker), src/app/main.ts (wired into index.html). ui_board + pwa tests pass.
+- Stubs for later tasks: promotion always becomes a queen (ui-rules adds the picker); level/color fixed at 3/White (ui-newgame); no controls, clocks, persistence yet. render() rebuilds the DOM each time, so extend it rather than caching nodes.
+- Next: ui-rules, ui-flip, ui-newgame.
