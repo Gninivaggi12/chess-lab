@@ -6,7 +6,7 @@
     "tests": [
       "tests/fen_valid.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-in-check",
@@ -17,7 +17,7 @@
     "tests": [
       "tests/in_check.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-basic",
@@ -28,7 +28,7 @@
     "tests": [
       "tests/moves_basic.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-check",
@@ -39,7 +39,7 @@
     "tests": [
       "tests/moves_check.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-castling",
@@ -50,7 +50,7 @@
     "tests": [
       "tests/moves_castling.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-promotion",
@@ -61,7 +61,7 @@
     "tests": [
       "tests/moves_promotion.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-en-passant",
@@ -73,7 +73,7 @@
     "tests": [
       "tests/moves_en_passant.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-perft",
@@ -88,7 +88,7 @@
     "tests": [
       "tests/perft.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-normalize",
@@ -103,7 +103,7 @@
     "tests": [
       "tests/fen_normalize.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-apply",
@@ -116,7 +116,7 @@
       "tests/apply_special.test.ts",
       "tests/apply_illegal.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-position-status",
@@ -131,7 +131,7 @@
     "tests": [
       "tests/status_position.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-game-status",
@@ -143,7 +143,7 @@
     "tests": [
       "tests/status_game.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-timeout",
@@ -154,7 +154,7 @@
     "tests": [
       "tests/timeout.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-premove-targets",
@@ -165,7 +165,7 @@
     "tests": [
       "tests/premove.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "notation-san-out",
