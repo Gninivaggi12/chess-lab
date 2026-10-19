@@ -11,3 +11,5 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Next in notation: fromSAN and toPGN (src/notation/index.ts to extend).
 - Session (notation-san-in): added fromSAN to src/notation/index.ts (strips trailing +#!?, 0-0 -> O-O, regex parse, filters legalMoves; null unless exactly one match; "x" must agree with whether the move captures). san_in + san_out tests pass (8041); claimed notation-san-in.
 - Next: notation-pgn-out, then notation-pgn-in.
+- Session (notation-pgn-out): added toPGN to src/notation/index.ts (seven-tag roster with defaults, SetUp/FEN for non-initial start, extra headers, move numbers from the FEN fullmove counter, `N...` when Black starts, result token from headers.Result). pgn_out + san tests pass (8131); claimed.
+- Next: notation-pgn-in (parsePGN).
