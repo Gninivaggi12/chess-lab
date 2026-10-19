@@ -1,5 +1,5 @@
 import type { Color, SoundKind, Square, Uci } from "../core/types.ts";
-import { INITIAL_FEN, applyMove, gameStatus, inCheck, legalMoves } from "../core/index.ts";
+import { INITIAL_FEN, applyMove, gameStatus, inCheck, legalMoves, timeoutResult } from "../core/index.ts";
 import { toSAN } from "../notation/index.ts";
 import { soundFor, play } from "../sound/index.ts";
 import { createClock, type Clock } from "../clock/index.ts";
@@ -63,6 +63,7 @@ export function mountApp(root: HTMLElement, deps: {
   let clock: Clock | null = null;
   let incrementMs = 0;
   let over = false;
+  let flagResult: { result: string; reason: string } | null = null;
   let thinking = false;
   let gameId = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -82,6 +83,10 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function statusText(): string {
+    if (flagResult) {
+      if (flagResult.reason === "timeout") return `Time out · ${flagResult.result === "1-0" ? "White" : "Black"} wins`;
+      return "Draw · timeout vs insufficient material";
+    }
     const s = gameStatus(INITIAL_FEN, ucis);
     if (!s.over) return turn() === "w" ? "White to move" : "Black to move";
     if (s.reason === "checkmate") return `Checkmate · ${s.result === "1-0" ? "White" : "Black"} wins`;
@@ -92,7 +97,22 @@ export function mountApp(root: HTMLElement, deps: {
     return `Draw · ${why[s.reason ?? ""] ?? s.reason}`;
   }
 
+  function checkFlag() {
+    const flagged = clock && !over ? clock.flagged() : null;
+    if (!flagged) return;
+    flagResult = timeoutResult(fen, flagged);
+    over = true;
+    clock!.pause();
+    thinking = false;
+    selected = null;
+    promoting = null;
+    gameId++;
+    if (timer) { clearTimeout(timer); timer = null; }
+    render();
+  }
+
   function updateClocks() {
+    checkFlag();
     for (const c of ["w", "b"] as Color[]) {
       const el = root.querySelector(`[data-clock="${c}"]`);
       if (!el) continue;
@@ -277,6 +297,7 @@ export function mountApp(root: HTMLElement, deps: {
       clock = null;
       incrementMs = 0;
     }
+    flagResult = null;
     gameId++;
     if (timer) { clearTimeout(timer); timer = null; }
     fen = INITIAL_FEN;
