@@ -425,6 +425,6 @@
     "tests": [
       "tests/pwa_subpath.test.ts"
     ],
-    "passes": false
+    "passes": true
   }
 ]
