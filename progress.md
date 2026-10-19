@@ -16,3 +16,5 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Next: engine is FEN-string based so it's slowish; if Gio finds level 5 weak, a private mailbox board in the engine would deepen search.
 - Session (notation-pgn-out): added toPGN to src/notation/index.ts (seven-tag roster with defaults, SetUp/FEN for non-initial start, extra headers, move numbers from the FEN fullmove counter, `N...` when Black starts, result token from headers.Result). pgn_out + san tests pass (8131); claimed.
 - Next: notation-pgn-in (parsePGN).
+- Session (engine-mate2, agent b): no code change; tests/engine_mate2 (plus engine_legal/behavior/mate1, clock, sound) pass with the existing search; claimed engine-mate2.
+- Next for engine: nothing pending; the FEN-string-based search could get a private mailbox board if level 5 is judged weak.
