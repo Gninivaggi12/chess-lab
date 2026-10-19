@@ -107,3 +107,53 @@ export function toPGN(game: PgnGame): string {
   tokens.push(h.Result ?? "*");
   return lines.join("\n") + "\n\n" + tokens.join(" ") + "\n";
 }
+
+export function parsePGN(pgn: string): PgnGame {
+  const headers: Record<string, string> = {};
+  const tag = /^\s*\[\s*(\w+)\s+"((?:[^"\\]|\\.)*)"\s*\]/;
+  let rest = pgn.replace(/^\uFEFF/, "");
+  for (;;) {
+    const m = tag.exec(rest);
+    if (!m) break;
+    headers[m[1]] = m[2].replace(/\\(["\\])/g, "$1");
+    rest = rest.slice(m[0].length);
+  }
+  const startFen = headers.FEN ?? INITIAL_FEN;
+  const moves: Uci[] = [];
+  let fen = startFen;
+  let depth = 0;
+  let i = 0;
+  while (i < rest.length) {
+    const c = rest[i];
+    if (c === "{") {
+      const end = rest.indexOf("}", i);
+      i = end < 0 ? rest.length : end + 1;
+    } else if (c === ";") {
+      const end = rest.indexOf("\n", i);
+      i = end < 0 ? rest.length : end + 1;
+    } else if (c === "(") {
+      depth++;
+      i++;
+    } else if (c === ")") {
+      if (depth > 0) depth--;
+      i++;
+    } else if (/\s/.test(c)) {
+      i++;
+    } else {
+      let j = i;
+      while (j < rest.length && !/[\s{};()]/.test(rest[j])) j++;
+      const tok = rest.slice(i, j);
+      i = j;
+      if (depth > 0) continue;
+      if (/^(1-0|0-1|1\/2-1\/2|\*)$/.test(tok)) break;
+      if (tok.startsWith("$")) continue;
+      const san = tok.replace(/^\d+\.*/, "");
+      if (!san) continue;
+      const uci = fromSAN(fen, san);
+      if (!uci) throw new Error(`Illegal or unreadable move in PGN: ${tok}`);
+      moves.push(uci);
+      fen = applyMove(fen, uci);
+    }
+  }
+  return { startFen, moves, headers };
+}
