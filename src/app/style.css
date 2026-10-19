@@ -1,0 +1,34 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: #262421; color: #eee; font-family: system-ui, sans-serif; }
+#app { width: 100%; max-width: 100vw; }
+[data-clock] { height: 28px; padding: 0 8px; font: 600 16px/28px ui-monospace, monospace; }
+[data-clock][data-active] { background: #3a5a2a; }
+[data-board] { display: grid; grid-template-columns: repeat(8, 1fr); width: 100vw; max-width: 100vw; aspect-ratio: 1; }
+[data-square] { position: relative; aspect-ratio: 1; min-width: 0; background: #f0d9b5; display: flex; align-items: center; justify-content: center; }
+[data-square]:is(:nth-child(16n+2), :nth-child(16n+4), :nth-child(16n+6), :nth-child(16n+8),
+  :nth-child(16n+9), :nth-child(16n+11), :nth-child(16n+13), :nth-child(16n+15)) { background: #b58863; }
+[data-square][data-last-move] { box-shadow: inset 0 0 0 100vw rgba(255, 220, 0, 0.3); }
+[data-square][data-selected] { box-shadow: inset 0 0 0 100vw rgba(20, 160, 60, 0.45); }
+[data-square][data-premove] { box-shadow: inset 0 0 0 100vw rgba(60, 100, 220, 0.45); }
+[data-square][data-check] { box-shadow: inset 0 0 0 100vw rgba(220, 30, 30, 0.5); }
+[data-square][data-target]::after { content: ""; position: absolute; width: 28%; height: 28%; border-radius: 50%; background: rgba(0, 0, 0, 0.3); pointer-events: none; }
+[data-piece] { display: block; width: 100%; text-align: center; font-size: min(11vw, 52px); line-height: 1; pointer-events: none; }
+[data-piece^="w"] { color: #fff; text-shadow: 0 0 2px #000, 0 0 1px #000, 0 0 1px #000; }
+[data-piece^="b"] { color: #111; }
+[data-piece$="K"]::before { content: "\265A"; }
+[data-piece$="Q"]::before { content: "\265B"; }
+[data-piece$="R"]::before { content: "\265C"; }
+[data-piece$="B"]::before { content: "\265D"; }
+[data-piece$="N"]::before { content: "\265E"; }
+[data-piece$="P"]::before { content: "\265F\FE0E"; }
+[data-status] { padding: 4px 8px; height: 28px; line-height: 20px; font-weight: 600; }
+[data-move-list] { height: 48px; overflow-y: auto; padding: 0 8px; font-size: 14px; }
+[data-move-list] span { margin-right: 8px; }
+[data-promotion] { display: flex; gap: 4px; padding: 0 8px; }
+[data-promotion]:empty { display: none; }
+[data-promotion] button { flex: 1; }
+button, select, input { min-height: 44px; font-size: 16px; }
+button, select { padding: 0 10px; }
+input[type="number"] { width: 72px; }
+button:disabled { opacity: 0.45; }
+div:has(> [data-level]) { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px 8px; }
