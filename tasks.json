@@ -323,7 +323,7 @@
     "tests": [
       "tests/ui_undo.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-clock",
