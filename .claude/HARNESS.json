@@ -1,5 +1,5 @@
 {
-  "framework_commit": "7e399fd",
+  "framework_commit": "7a1b6d3",
   "profile": "worker",
   "project": "chess-lab",
   "protected": [
@@ -7,5 +7,10 @@
     "package.json",
     "package-lock.json",
     "init.sh"
+  ],
+  "runner": "vitest",
+  "test_cmd": [
+    "node_modules/.bin/vitest",
+    "run"
   ]
 }

@@ -70,7 +70,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no_regressions.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/no_regressions.py",
+            "timeout": 600
           }
         ]
       }

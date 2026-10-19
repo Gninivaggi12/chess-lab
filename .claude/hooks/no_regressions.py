@@ -23,10 +23,15 @@ if not tasks_file.exists():
 tasks = json.loads(tasks_file.read_text())
 must_pass = [t for task in tasks if task.get("passes") for t in task.get("tests", [])]
 if must_pass:
-    venv_python = pathlib.Path(".venv/bin/python")   # the project's interpreter has pytest
-    python = str(venv_python) if venv_python.exists() else sys.executable
-    r = subprocess.run([python, "-m", "pytest", "-q", "-p", "no:cacheprovider", *must_pass],
-                       capture_output=True, text=True)
+    # The project's test command, recorded by install.py (pytest for older installs).
+    harness = pathlib.Path(".claude/HARNESS.json")
+    cmd = json.loads(harness.read_text()).get("test_cmd") if harness.exists() else None
+    if not cmd:
+        venv_python = pathlib.Path(".venv/bin/python")   # the project's interpreter has pytest
+        python = str(venv_python) if venv_python.exists() else sys.executable
+        cmd = [python, "-m", "pytest", "-q", "-p", "no:cacheprovider"]
+    r = subprocess.run([*cmd, *must_pass], capture_output=True, text=True,
+                       env=dict(os.environ, NO_COLOR="1"))
     if r.returncode != 0:
         print("BLOCKED: tests for tasks already marked passing now fail. "
               "Fix the regression before ending.\n" + r.stdout[-1500:], file=sys.stderr)
