@@ -173,7 +173,12 @@ While the engine is thinking, you can queue **one** move in advance.
 - `public/sw.js`, a service worker registered by the app, that caches the built app so it works offline after the first visit.
 - `npm run build` succeeds.
 - **The built app works from any folder, not just the site root.** GitHub Pages serves it at `https://<user>.github.io/chess-lab/`, so every URL in the page, the manifest (`start_url`, `scope`, icons), the service worker's cache list and the service-worker registration must be relative (e.g. Vite `base: "./"`, `./sw.js`, `start_url: "./"`). Root paths like `/sw.js` point outside the app there. (Gio, 2026-10-19: hosted on GitHub Pages so friends can install it.)
-- Layout fits a phone screen in portrait without scrolling; the board is as wide as the screen; touch targets are at least 44 px.
+- **What the screen shows** (checked in a real browser, headless Chrome at phone width, because the jsdom UI tests can't see layout; Gio, 2026-10-19: the first build showed no board):
+  - Layout fits a phone screen in portrait without scrolling; the board is as wide as the screen (at least 90% of it); touch targets (buttons, selects, inputs) are at least 44 px tall.
+  - The board is an 8×8 grid of equal square squares, light and dark alternating (a1 dark, as on a real board), so neighbouring squares never share a colour.
+  - Every piece is drawn (Unicode chess symbols, inline SVG or CSS drawings; no downloaded images) and fills at least half its square.
+  - Tapping a square in the real page selects/moves exactly as the UI rules say; the engine's reply arrives from its Web Worker; New game resets the board.
+  - No script errors.
 
 ## Out of scope
 
