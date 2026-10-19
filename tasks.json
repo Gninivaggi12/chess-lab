@@ -301,7 +301,7 @@
     "tests": [
       "tests/ui_flip.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-newgame",
