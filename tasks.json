@@ -312,7 +312,7 @@
     "tests": [
       "tests/ui_newgame.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-undo",
