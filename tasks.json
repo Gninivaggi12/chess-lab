@@ -235,7 +235,7 @@
     "tests": [
       "tests/engine_mate1.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "engine-mate2",

@@ -12,6 +12,7 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Session (notation-san-in): added fromSAN to src/notation/index.ts (strips trailing +#!?, 0-0 -> O-O, regex parse, filters legalMoves; null unless exactly one match; "x" must agree with whether the move captures). san_in + san_out tests pass (8041); claimed notation-san-in.
 - Next: notation-pgn-out, then notation-pgn-in.
 - Session (engine agent): wrote src/engine/index.ts: bestMove via core's FEN API, level 1 seeded random, levels 2-5 iterative-deepening alpha-beta (depth caps 1/2/3/6) with material + small positional eval. Level 5 without maxTimeMs stops on a node budget (repeatable) with a 1.5 s backstop; maxTimeMs is a hard deadline. engine_legal/behavior pass; engine_mate1/mate2 also pass already.
+- Session (engine-mate1, agent b): no code change needed; tests/engine_mate1 (plus engine_legal/behavior) pass with the existing search, so claimed engine-mate1. Next: engine-mate2 is likewise already passing in practice.
 - Next: engine is FEN-string based so it's slowish; if Gio finds level 5 weak, a private mailbox board in the engine would deepen search.
 - Session (notation-pgn-out): added toPGN to src/notation/index.ts (seven-tag roster with defaults, SetUp/FEN for non-initial start, extra headers, move numbers from the FEN fullmove counter, `N...` when Black starts, result token from headers.Result). pgn_out + san tests pass (8131); claimed.
 - Next: notation-pgn-in (parsePGN).
