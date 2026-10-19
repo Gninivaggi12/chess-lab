@@ -1,5 +1,5 @@
 import type { Color, SoundKind, Square, Uci } from "../core/types.ts";
-import { INITIAL_FEN, applyMove, legalMoves, positionStatus } from "../core/index.ts";
+import { INITIAL_FEN, applyMove, gameStatus, inCheck, legalMoves } from "../core/index.ts";
 import { toSAN } from "../notation/index.ts";
 import { soundFor, play } from "../sound/index.ts";
 
@@ -40,6 +40,8 @@ export function mountApp(root: HTMLElement, deps: {
 
   let fen = INITIAL_FEN;
   const sans: string[] = [];
+  const ucis: Uci[] = [];
+  let promoting: { from: Square; to: Square } | null = null;
   let lastMove: Uci | null = null;
   let selected: Square | null = null;
   const human: Color = "w";
@@ -64,7 +66,7 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function statusText(): string {
-    const s = positionStatus(fen);
+    const s = gameStatus(INITIAL_FEN, ucis);
     if (!s.over) return turn() === "w" ? "White to move" : "Black to move";
     if (s.reason === "checkmate") return `Checkmate · ${s.result === "1-0" ? "White" : "Black"} wins`;
     const why: Record<string, string> = {
@@ -102,6 +104,10 @@ export function mountApp(root: HTMLElement, deps: {
         boardEl.append(el);
       }
     }
+    if (inCheck(fen)) {
+      const k = turn() === "w" ? "wK" : "bK";
+      for (const [sq, p] of board) if (p === k) boardEl.querySelector(`[data-square="${sq}"]`)?.setAttribute("data-check", "");
+    }
     const status = document.createElement("div");
     status.setAttribute("data-status", "");
     status.textContent = statusText();
@@ -113,26 +119,49 @@ export function mountApp(root: HTMLElement, deps: {
       e.textContent = san;
       list.append(e);
     });
-    root.replaceChildren(boardEl, status, list);
+    const picker = document.createElement("div");
+    picker.setAttribute("data-promotion", "");
+    if (promoting) {
+      for (const t of ["q", "r", "b", "n"]) {
+        const b = document.createElement("button");
+        b.setAttribute("data-promotion-choice", t);
+        b.textContent = t.toUpperCase();
+        b.addEventListener("click", () => choosePromotion(t));
+        picker.append(b);
+      }
+    }
+    root.replaceChildren(boardEl, picker, status, list);
   }
 
   function playMove(uci: Uci) {
     const san = toSAN(fen, uci);
     fen = applyMove(fen, uci);
     sans.push(san);
+    ucis.push(uci);
     lastMove = uci;
     selected = null;
-    over = positionStatus(fen).over;
+    over = gameStatus(INITIAL_FEN, ucis).over;
     sound.play(soundFor(san, over));
+  }
+
+  function choosePromotion(piece: string) {
+    if (!promoting || over) return;
+    const uci = promoting.from + promoting.to + piece;
+    promoting = null;
+    playMove(uci);
+    engineTurn();
+    render();
   }
 
   function tap(sq: Square) {
     if (over || thinking || turn() !== human) return;
+    if (promoting) { promoting = null; selected = null; render(); return; }
     const moves = legalMoves(fen);
     const move = selected && moves.find((m) => m.startsWith(selected + sq));
-    if (move) {
-      // The promotion picker comes with ui-rules; until then promote to a queen.
-      playMove(move.length === 5 ? move.slice(0, 4) + "q" : move);
+    if (move && move.length === 5) {
+      promoting = { from: selected!, to: sq };
+    } else if (move) {
+      playMove(move);
       engineTurn();
     } else {
       selected = pieces().get(sq)?.[0] === human && sq !== selected ? sq : null;
