@@ -1,4 +1,4 @@
-import { applyMove, inCheck, legalMoves, positionStatus } from "../core/index.ts";
+import { INITIAL_FEN, applyMove, inCheck, legalMoves, positionStatus } from "../core/index.ts";
 import type { Uci } from "../core/types.ts";
 
 function pieceAt(fen: string, sq: string): string {
@@ -73,4 +73,37 @@ export function fromSAN(fen: string, san: string): Uci | null {
     });
   }
   return found.length === 1 ? found[0] : null;
+}
+
+export interface PgnGame { startFen: string; moves: Uci[]; headers: Record<string, string> }
+
+const ROSTER: [string, string][] = [["Event", "?"], ["Site", "?"], ["Date", "????.??.??"],
+  ["Round", "?"], ["White", "?"], ["Black", "?"], ["Result", "*"]];
+
+export function toPGN(game: PgnGame): string {
+  const h = game.headers ?? {};
+  const lines: string[] = [];
+  const tag = (k: string, v: string) => lines.push(`[${k} "${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`);
+  for (const [k, d] of ROSTER) tag(k, h[k] ?? d);
+  const custom = game.startFen !== INITIAL_FEN;
+  if (custom) { tag("SetUp", "1"); tag("FEN", game.startFen); }
+  const roster = new Set(ROSTER.map(r => r[0]));
+  for (const k of Object.keys(h)) {
+    if (roster.has(k) || (custom && (k === "SetUp" || k === "FEN"))) continue;
+    tag(k, h[k]);
+  }
+  const tokens: string[] = [];
+  let fen = game.startFen;
+  let white = fen.split(" ")[1] === "w";
+  let num = Number(fen.split(" ")[5]) || 1;
+  game.moves.forEach((m, i) => {
+    if (white) tokens.push(`${num}.`);
+    else if (i === 0) tokens.push(`${num}...`);
+    tokens.push(toSAN(fen, m));
+    fen = applyMove(fen, m);
+    if (!white) num++;
+    white = !white;
+  });
+  tokens.push(h.Result ?? "*");
+  return lines.join("\n") + "\n\n" + tokens.join(" ") + "\n";
 }
