@@ -358,7 +358,7 @@
     "tests": [
       "tests/ui_sound.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-persist",
