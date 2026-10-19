@@ -1,6 +1,6 @@
 # SPEC: chess you can play against the computer, as a phone web app
 
-Status: **DRAFT** for Gio's review (2026-10-19). Read-only to worker agents once approved.
+Status: decisions approved by Gio (2026-10-19): automatic draws, engine levels, feature list, plus clocks, sounds and one premove. Read-only to worker agents.
 
 ## Goal
 
@@ -22,6 +22,8 @@ Each area lives in its own folder and exposes only what's listed here. Code in o
 src/core/      board, FEN, move generation, game state, rules     (pure, no DOM)
 src/notation/  SAN, PGN                                            (pure, no DOM)
 src/engine/    computer opponent                                   (pure, no DOM)
+src/clock/     chess clock                                         (pure, no DOM)
+src/sound/     move sounds                                         (Web Audio)
 src/ui/        board view, input, game screen                      (DOM)
 src/app/       entry point, Web Worker for the engine, PWA files
 ```
@@ -35,7 +37,9 @@ export type Square = string;            // "a1" … "h8"
 export type Uci = string;               // "e2e4", "e7e8q" (promotion piece lowercase)
 export type Result = "1-0" | "0-1" | "1/2-1/2" | "*";
 export type EndReason = "checkmate" | "stalemate" | "insufficient-material"
-                      | "threefold-repetition" | "fifty-move-rule";
+                      | "threefold-repetition" | "fifty-move-rule"
+                      | "timeout" | "timeout-vs-insufficient-material";
+export type SoundKind = "move" | "capture" | "castle" | "check" | "promote" | "game-end" | "low-time";
 ```
 
 ### Core (`src/core/index.ts`)
@@ -71,12 +75,14 @@ Positions go in and out as FEN strings, so every function is testable with nothi
 
 | Export | Behavior |
 |---|---|
-| `bestMove(fen, level: 1-5): Uci` | A legal move. Throws if there are none |
+| `bestMove(fen, level: 1-5, maxTimeMs?: number): Uci` | A legal move. Throws if there are none. With `maxTimeMs`, returns within that time (plus 50 ms) at any level |
 | | Level 1: a mostly random legal move (for beginners). Higher levels search deeper. Level 5 must answer within 2 s on the test machine |
 | | Every level ≥ 2 plays mate in 1 when available. Level ≥ 4 finds mate in 2 |
 | | Deterministic for a given position and level (seeded, so tests are repeatable) |
 
 The level-5 target is a solid casual opponent (roughly the strength of a 1300–1600 online player), judged by Gio playing it, not by tests.
+
+**Think time in the app:** the engine never replies sooner than **0.6 s** after your move (a natural pace that leaves time to premove). In a clocked game it spends its own clock: about `remaining / 30 + increment` per move, never more than the level allows, and never so much that it flags with time left to move.
 
 ### UI (`src/ui/`, `src/app/`)
 
@@ -92,7 +98,48 @@ The oracle drives the UI through these attributes, so they're part of the interf
 | Status | `data-status` text: whose turn, "Checkmate · White wins", "Draw · threefold repetition", etc. |
 | Move list | `data-move-list` showing SAN in numbered pairs |
 | Engine | Runs in a Web Worker so the board never freezes; `data-thinking` while it searches |
-| Persistence | The game in progress survives closing the app (`localStorage`) |
+| Persistence | The game in progress survives closing the app (`localStorage`), including clocks (paused while the app is closed) |
+| Clock | `data-clock="w"` / `"b"` showing the time; `data-time-control` picker |
+
+### Clock (`src/clock/index.ts`)
+
+Pure logic with an injected time source, so tests control time exactly.
+
+| Export | Behavior |
+|---|---|
+| `createClock({ initialMs, incrementMs }, now: () => number)` | Both sides start with `initialMs`. Nobody's time runs until White's first move is made |
+| `clock.press(color)` | Ends `color`'s turn: stops its time, **adds the increment to it**, starts the other side's. Pressing for the side whose time isn't running is ignored |
+| `clock.remaining(color)` | Milliseconds left, never below 0 |
+| `clock.flagged()` | The color whose time hit 0, or `null` |
+| `clock.pause()` / `clock.resume()` | For undo, app backgrounding and game end |
+
+**Time controls:** none (default), 1+0, 3+0, 3+2, 5+0, 10+0, 15+10, 30+0, and custom (minutes + increment seconds).
+
+**Running out of time** loses, **unless the opponent couldn't mate by any series of moves**, in which case it's a draw (FIDE rule). The opponent (the side that didn't run out) can't mate when it has:
+- only its king; or
+- king + exactly one knight, and the side that ran out has nothing but its king and queens; or
+- king + bishops only, there are no pawns or knights on the board, and every bishop on the board stands on squares of one color.
+
+Anything else is a loss on time, e.g. K+N against K+pawn (the pawn can block its own king in). The status adds the `EndReason` `"timeout"` (loss) or `"timeout-vs-insufficient-material"` (draw). These rules match `python-chess`'s `has_insufficient_material` (checked 2026-10-19).
+
+In the app, the clock shows `m:ss`, switching to tenths (`0:09.4`) under 10 s, and highlights the side to move. Undo isn't available in clocked games.
+
+### Sound (`src/sound/index.ts`)
+
+| Export | Behavior |
+|---|---|
+| `soundFor(san: string, gameOver: boolean): SoundKind` | Pure. `"game-end"` if `gameOver`, else `"check"` if the SAN ends in `+` or `#`, else `"castle"`, `"promote"`, `"capture"`, `"move"`, checked in that order |
+| `play(kind: SoundKind)` | Plays a short synthesized sound with the Web Audio API (no audio files to license). Also `"low-time"` once when your clock drops below 10 s |
+
+A mute toggle (`data-action="mute"`) is remembered between sessions. iPhones only allow audio after a user tap, so the first tap on the board unlocks it.
+
+### Premoves
+
+While the engine is thinking, you can queue **one** move in advance.
+
+- A premove is allowed if the square holds your piece and the destination fits that piece's movement on an **empty** board: sliding pieces along their lines, knight jumps, king one square or castling, pawns one or two forward or one diagonally. Whether it's legal is checked only when it's played.
+- Both squares get `data-premove`. Tapping your piece again, or tapping an empty square that isn't a premove destination, cancels it. A pawn premove to the last rank asks for the promotion piece right away.
+- When the engine moves: if the premove is now legal, it plays immediately (your clock still gets pressed, so the increment applies); otherwise it's cancelled.
 
 ### Phone app (PWA)
 
@@ -102,7 +149,7 @@ The oracle drives the UI through these attributes, so they're part of the interf
 
 ## Out of scope
 
-Online play, accounts, clocks/time controls, chess variants, opening books, endgame tablebases, analysis boards, sounds, animations beyond a simple move transition, an App Store build.
+Online play, accounts, chess variants, opening books, endgame tablebases, analysis boards, more than one premove, music or recorded sound files, animations beyond a simple move transition, an App Store build.
 
 ## The oracle (how correctness is decided)
 
@@ -111,6 +158,6 @@ Generated by a script in the framework repo, never by an agent, from:
 - **Published perft results** (the chessprogramming.org positions: initial, "Kiwipete" and positions 3–6), the standard test of move generation, where any bug changes the count.
 - **`python-chess` as the reference** for thousands of generated cases: legal move lists, FEN after each move, check, game status, repetitions, SAN, and PGN round-trips, from random games and edge-case positions (pins, en passant discoveries, castling through check, underpromotion).
 - **Generated puzzles**: positions with a unique mate in 1 / mate in 2, checked by the reference.
-- **Hand-written UI tests** against the `data-*` contract above, plus manifest and service-worker checks.
+- **Hand-written tests** for the clock (with a fake time source), sounds (`soundFor`), premoves and the UI, against the `data-*` contract above, plus manifest and service-worker checks. Sound quality, feel and engine strength are judged by Gio playing.
 
 About 20–25% of the generated cases are held out where agents can't read them. After a run, an independent fuzz compares the agents' core and notation against `python-chess` on random games.
