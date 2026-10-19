@@ -278,7 +278,7 @@
     "tests": [
       "tests/ui_board.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-rules",
