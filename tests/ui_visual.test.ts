@@ -43,18 +43,32 @@ async function probe(url: string): Promise<any> {
     const ws = new WebSocket(page.webSocketDebuggerUrl);
     await new Promise((res) => ws.addEventListener("open", res, { once: true }));
     let id = 0;
-    const evaluate = (expression: string) => new Promise<any>((resolve) => {
+    const send = (method: string, params: object = {}) => new Promise<any>((resolve) => {
       const my = ++id;
       const on = (e: MessageEvent) => {
         const msg = JSON.parse(String(e.data));
-        if (msg.id === my) { ws.removeEventListener("message", on); resolve(msg.result?.result?.value); }
+        if (msg.id === my) { ws.removeEventListener("message", on); resolve(msg.result); }
       };
       ws.addEventListener("message", on);
-      ws.send(JSON.stringify({ id: my, method: "Runtime.evaluate", params: { expression, returnByValue: true } }));
+      ws.send(JSON.stringify({ id: my, method, params }));
     });
+    const evaluate = async (expression: string) =>
+      (await send("Runtime.evaluate", { expression, returnByValue: true }))?.result?.value;
+    // An iPhone-sized screen (headless Chrome's window can't go below 500 px), then reload
+    // so the page lays out and the probe measures at that size.
+    await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
+    await send("Emulation.setTouchEmulationEnabled", { enabled: true });
+    await send("Page.reload", { ignoreCache: true });
+    await new Promise((res) => setTimeout(res, 300));
     for (let i = 0; i < 100; i++) {                     // up to 20 s
       const text = await evaluate("document.getElementById('probe-result')?.textContent ?? null");
-      if (text) { ws.close(); return JSON.parse(text); }
+      if (text) {
+        // A picture for humans: the screen as the probe left it (after New game).
+        const shot = await send("Page.captureScreenshot", { format: "png" });
+        if (shot?.data) writeFileSync(join(tmpdir(), "chess-visual.png"), Buffer.from(shot.data, "base64"));
+        ws.close();
+        return JSON.parse(text);
+      }
       await new Promise((res) => setTimeout(res, 200));
     }
     ws.close();
