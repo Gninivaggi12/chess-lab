@@ -1,6 +1,6 @@
 import { legalMoves } from "./moves.ts";
 import { INITIAL_FEN, findKing, isAttacked, parseFEN, sqIndex } from "./board.ts";
-import type { Color } from "./types.ts";
+import type { Color, EndReason, Result } from "./types.ts";
 
 export { INITIAL_FEN };
 export { legalMoves } from "./moves.ts";
@@ -82,6 +82,28 @@ export function inCheck(fen: string): boolean {
   if (!pos) throw new Error(`invalid FEN: ${fen}`);
   const other: Color = pos.turn === "w" ? "b" : "w";
   return isAttacked(pos.board, findKing(pos.board, pos.turn), other);
+}
+
+function insufficientMaterial(fen: string): boolean {
+  const pos = parseFEN(fen);
+  if (!pos) return false;
+  const rest = pos.board.map((p, i) => ({ p, i })).filter((s) => s.p && s.p.type !== "k");
+  if (rest.length === 0) return true;
+  if (rest.length === 1 && rest[0].p!.type === "n") return true;
+  return rest.every((s) => s.p!.type === "b") &&
+    new Set(rest.map((s) => ((s.i >> 3) + (s.i & 7)) & 1)).size === 1;
+}
+
+export function positionStatus(fen: string): { over: boolean; result: Result; reason?: EndReason } {
+  const pos = parseFEN(fen);
+  if (!pos) throw new Error(`invalid FEN: ${fen}`);
+  if (legalMoves(fen).length === 0) {
+    if (inCheck(fen)) return { over: true, result: pos.turn === "w" ? "0-1" : "1-0", reason: "checkmate" };
+    return { over: true, result: "1/2-1/2", reason: "stalemate" };
+  }
+  if (insufficientMaterial(fen)) return { over: true, result: "1/2-1/2", reason: "insufficient-material" };
+  if (pos.halfmove >= 100) return { over: true, result: "1/2-1/2", reason: "fifty-move-rule" };
+  return { over: false, result: "*" };
 }
 
 export function premoveTargets(fen: string, square: string): string[] {

@@ -133,7 +133,7 @@
     "tests": [
       "tests/status_position.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-game-status",
