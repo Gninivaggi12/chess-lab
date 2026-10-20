@@ -337,7 +337,7 @@
     "tests": [
       "tests/ui_clock.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-flag",
