@@ -75,7 +75,7 @@
     "tests": [
       "tests/moves_en_passant.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-perft",
