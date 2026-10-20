@@ -15,7 +15,7 @@ select, input { min-height: 44px; box-sizing: border-box; font-size: 16px; }
 [data-square][data-check] { background: #e8503a; }
 [data-square][data-target]::after { content: ""; position: absolute; width: 28%; height: 28%; border-radius: 50%; background: rgba(0, 0, 0, 0.25); }
 
-[data-piece] { display: block; font-size: 82cqmin; line-height: 1; text-align: center; pointer-events: none; }
+[data-piece] { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 82cqmin; line-height: 1; pointer-events: none; }
 [data-piece^="w"] { color: #fff; text-shadow: 0 0 2px #000, 0 0 1px #000, 0 1px 0 #000; }
 [data-piece^="b"] { color: #111; text-shadow: 0 0 1px #fff; }
 
