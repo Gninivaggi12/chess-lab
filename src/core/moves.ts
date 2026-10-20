@@ -7,7 +7,7 @@ const KING = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-/** Legal ordinary moves (no castling, en passant or promotion yet). Throws on a malformed FEN. */
+/** Legal ordinary moves (no en passant or promotion yet). Throws on a malformed FEN. */
 export function legalMoves(fen: string): Uci[] {
   const pos = parseFEN(fen);
   if (!pos) throw new Error(`invalid FEN: ${fen}`);
@@ -20,6 +20,18 @@ export function legalMoves(fen: string): Uci[] {
     next[to] = next[from];
     next[from] = null;
     if (!isAttacked(next, findKing(next, turn), other)) out.push(sqName(from) + sqName(to));
+  };
+
+  const castle = (from: number) => {
+    const home = turn === "w" ? 60 : 4;
+    if (from !== home || isAttacked(board, home, other)) return;
+    const base = turn === "w" ? 56 : 0;
+    const rook = (i: number) => board[i]?.type === "r" && board[i]!.color === turn;
+    const right = (c: string) => pos.castling.includes(turn === "w" ? c.toUpperCase() : c);
+    if (right("k") && rook(base + 7) && !board[home + 1] && !board[home + 2]
+      && !isAttacked(board, home + 1, other) && !isAttacked(board, home + 2, other)) tryMove(home, home + 2);
+    if (right("q") && rook(base) && !board[home - 1] && !board[home - 2] && !board[home - 3]
+      && !isAttacked(board, home - 1, other) && !isAttacked(board, home - 2, other)) tryMove(home, home - 2);
   };
 
   for (let from = 0; from < 64; from++) {
@@ -48,7 +60,10 @@ export function legalMoves(fen: string): Uci[] {
     };
     const kind: PieceType = p.type;
     if (kind === "n") step(KNIGHT);
-    else if (kind === "k") step(KING);
+    else if (kind === "k") {
+      step(KING);
+      castle(from);
+    }
     else if (kind === "b") slide(DIAG);
     else if (kind === "r") slide(ORTHO);
     else if (kind === "q") slide([...DIAG, ...ORTHO]);
