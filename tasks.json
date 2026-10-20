@@ -248,7 +248,7 @@
     "tests": [
       "tests/engine_mate2.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "clock",
