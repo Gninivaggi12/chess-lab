@@ -9,3 +9,4 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - Next: core-moves-basic (reuse parseFEN/isAttacked from board.ts).
 - Earlier note: other core tasks (inCheck, moves) can reuse parseFEN/isAttacked from board.ts and re-export from index.ts.
 - exp-a-4-a: built `src/sound/index.ts` (pure `soundFor`, synthesized Web Audio `play`, best-effort/no-op without AudioContext); tests/sound.test.ts passes 495/495, claimed `sound`. Sound quality is untested by design (Gio judges). The "unlock on first tap" and the low-time trigger belong to the UI tasks.
+- exp-a-4-a: added `timeoutResult(fen, flagged)` to src/core/index.ts (draw if the opponent has only a king, K+single N vs only K/Q, or bishops-only on one color with no pawns/knights on board; else loss on time). tests/timeout.test.ts passes along with fen_valid and in_check; claimed `core-timeout`. Nothing broke.

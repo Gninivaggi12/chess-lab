@@ -44,6 +44,22 @@ export function isValidFEN(fen: string): boolean {
   }
 }
 
+export function timeoutResult(fen: string, flagged: Color): { result: "1-0" | "0-1" | "1/2-1/2"; reason: "timeout" | "timeout-vs-insufficient-material" } {
+  const pos = parseFEN(fen);
+  if (!pos) throw new Error(`invalid FEN: ${fen}`);
+  const winner: Color = flagged === "w" ? "b" : "w";
+  const squares = pos.board.map((p, i) => ({ p: p!, i })).filter((s) => s.p);
+  const mine = squares.filter((s) => s.p.color === winner && s.p.type !== "k");
+  const onlyKing = mine.length === 0;
+  const oneKnight = mine.length === 1 && mine[0].p.type === "n" &&
+    squares.every((s) => s.p.color === winner || s.p.type === "k" || s.p.type === "q");
+  const bishopsOnly = mine.every((s) => s.p.type === "b") &&
+    squares.every((s) => s.p.type !== "p" && s.p.type !== "n") &&
+    new Set(squares.filter((s) => s.p.type === "b").map((s) => ((s.i >> 3) + (s.i & 7)) & 1)).size <= 1;
+  if (onlyKing || oneKnight || bishopsOnly) return { result: "1/2-1/2", reason: "timeout-vs-insufficient-material" };
+  return { result: winner === "w" ? "1-0" : "0-1", reason: "timeout" };
+}
+
 export function inCheck(fen: string): boolean {
   const pos = parseFEN(fen);
   if (!pos) throw new Error(`invalid FEN: ${fen}`);
