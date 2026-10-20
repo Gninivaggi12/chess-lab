@@ -266,7 +266,7 @@
     "tests": [
       "tests/sound.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-board",
