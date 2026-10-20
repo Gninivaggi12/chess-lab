@@ -292,7 +292,7 @@
     "tests": [
       "tests/ui_rules.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-flip",
