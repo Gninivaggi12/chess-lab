@@ -458,7 +458,7 @@
     "tests": [
       "tests/ui_layout.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-board-look",
