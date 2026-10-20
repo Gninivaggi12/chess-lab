@@ -126,6 +126,31 @@ The oracle drives the UI through these attributes, so they're part of the interf
 | Persistence | The game in progress survives closing the app (`localStorage`), including clocks (paused while the app is closed) |
 | Clock | `data-clock="w"` / `"b"` text `m:ss` (`5:00`, `12:03`), or `0:09.4` under 10 s; the running one has `data-active`. Hidden (empty) when the time control is `none` |
 
+### Screen layout and look (target: chess.com's game screen)
+
+Gio, 2026-10-19: the structure and layout should look as much like chess.com's game screen as possible, on phones and laptops. **Copy structure and behavior only:** no chess.com name, logo, artwork, avatars or sounds. Reference: `docs/research-chesscom-layout.md` in the framework repo. Checked in a real browser (headless Chrome) at six window sizes, from a 375×553 phone to a 1920×969 desktop window, by `tests/ui_layout.test.ts` and `tests/ui_board_look.test.ts`.
+
+**Parts of the screen** (attributes are part of the interface, like the table above):
+
+| Part | Contract |
+|---|---|
+| Player bars | `[data-player-bar="top"]` (the opponent, i.e. the side at the top of the board) directly above the board and `[data-player-bar="bottom"]` (you) directly below it, each as wide as the board. Each holds `[data-avatar]` (a simple placeholder shape is fine), `[data-player-name]` (`You`; `Computer · Level 3`) and that side's `[data-clock]` at its right end. Flipping swaps which side is in which bar |
+| Action buttons | `[data-actions]` holds the buttons `data-action="new-game"`, `"undo"`, `"flip"`, `"settings"`, `"mute"` (icons or short labels) |
+| Settings | `data-action="settings"` opens `[data-settings]` (a panel or dialog, hidden until opened) holding the level, color and time-control controls from the table above, and a credits line `[data-credits]` naming the piece artist (see Pieces). The settings controls are never loose on the game screen |
+| Move list | `[data-move-list]` shows one `[data-move-row]` per move number, each with `[data-move-number]` (`1.`) followed by White's and Black's `[data-ply]` elements; the latest ply has `data-current` |
+| Wide windows (width ≥ 900 px and wider than tall) | The board is on the left, as large as the height allows. To its right, `[data-panel]` holds the move list and `[data-actions]`, no taller than the board plus its two bars. **Nothing scrolls** |
+| Narrow windows (phones) | Top to bottom: the top bar, the board edge to edge, the bottom bar, then `[data-actions]`. Bars, board and actions all fit the window without scrolling; the move list may sit below them (scrolling only to read it) |
+
+**Board look:**
+- **Squares:** light `#EBECD0`, dark `#779556` (a1 is dark).
+- **Coordinates inside the edge squares:** `[data-coord]` elements, ranks `1`–`8` in the left column's squares (top-left corner) and files `a`–`h` in the bottom row's squares (bottom-right corner), in the contrasting square color. They follow the board when flipped.
+- **Highlights:**
+  - **Last move:** both squares are tinted (yellowish) so they look different from both square colors.
+  - **Selected piece:** each legal destination shows a marker, a dot on an empty square and a ring on a capture.
+- **Moving:** tap-tap (as above) **and drag-and-drop** with mouse or finger: press on a piece, move, release on the destination.
+- **Pieces:** the harness provides the cburnett set as `public/pieces/cburnett/<code>.svg` (`wK`, `bQ`, …), read-only, used under the BSD license in `public/pieces/cburnett/LICENSE.txt`. Each `[data-piece]` element shows its file (as an `<img>` or CSS background), centered, at least 80% of the square. The credits line in settings says: `Pieces by Cburnett (BSD license)`.
+- **Around the board:** a dark page background, as on chess.com.
+
 ### Clock (`src/clock/index.ts`)
 
 Pure logic with an injected time source, so tests control time exactly.
@@ -168,11 +193,17 @@ While the engine is thinking, you can queue **one** move in advance.
 
 ### Phone app (PWA)
 
-- `index.html` at the repo root (Vite's entry) with a viewport meta tag, `<link rel="manifest" href="/manifest.webmanifest">`, `<link rel="apple-touch-icon" href="/apple-touch-icon.png">` and `<meta name="apple-mobile-web-app-capable" content="yes">`.
+- `index.html` at the repo root (Vite's entry) with a viewport meta tag, `<link rel="manifest" href="./manifest.webmanifest">`, `<link rel="apple-touch-icon" href="./apple-touch-icon.png">` and `<meta name="apple-mobile-web-app-capable" content="yes">`.
 - `public/manifest.webmanifest` with `name`, `short_name`, `display: "standalone"`, `start_url`, `theme_color`, `background_color`, and icons `public/icon-192.png` (192×192) and `public/icon-512.png` (512×512); `public/apple-touch-icon.png` is 180×180. Icons are real PNGs drawn by a script or by hand (no downloaded artwork).
 - `public/sw.js`, a service worker registered by the app, that caches the built app so it works offline after the first visit.
 - `npm run build` succeeds.
-- Layout fits a phone screen in portrait without scrolling; the board is as wide as the screen; touch targets are at least 44 px.
+- **The built app works from any folder, not just the site root.** GitHub Pages serves it at `https://<user>.github.io/chess-lab/`, so every URL in the page, the manifest (`start_url`, `scope`, icons), the service worker's cache list and the service-worker registration must be relative (e.g. Vite `base: "./"`, `./sw.js`, `start_url: "./"`). Root paths like `/sw.js` point outside the app there. (Gio, 2026-10-19: hosted on GitHub Pages so friends can install it.)
+- **What the screen shows** (checked in a real browser, headless Chrome at phone width, because the jsdom UI tests can't see layout; Gio, 2026-10-19: the first build showed no board):
+  - Layout fits a phone screen in portrait without scrolling; the board is as wide as the screen (at least 90% of it); touch targets (buttons, selects, inputs) are at least 44 px tall.
+  - The board is an 8×8 grid of equal square squares, light and dark alternating (a1 dark, as on a real board), so neighbouring squares never share a colour.
+  - Every piece is drawn (Unicode chess symbols, inline SVG or CSS drawings; no downloaded images) and fills at least half its square.
+  - Tapping a square in the real page selects/moves exactly as the UI rules say; the engine's reply arrives from its Web Worker; New game resets the board.
+  - No script errors.
 
 ## Out of scope
 

@@ -28,5 +28,22 @@ describe("build", () => {
     for (const f of ["index.html", "manifest.webmanifest", "sw.js", "icon-192.png", "icon-512.png", "apple-touch-icon.png"]) {
       expect(existsSync(join(outDir, f)), f).toBe(true);
     }
+
+    // The build is the whole app, not just the shell: the entry script mounts the board,
+    // the engine is bundled as a separate Web Worker, and the service worker is registered.
+    const html = readFileSync(join(outDir, "index.html"), "utf8");
+    const entry = [...html.matchAll(/<script[^>]+src="\/?([^"]+\.js)"/g)].map((m) => m[1]);
+    expect(entry.length, "index.html loads a bundled script").toBeGreaterThan(0);
+    const assets = readdirSync(join(outDir, "assets")).filter((f) => f.endsWith(".js"));
+    const js = assets.map((f) => readFileSync(join(outDir, "assets", f), "utf8"));
+    const all = js.join("\n");
+    expect(all, "the board is rendered (data-square)").toContain("data-square");
+    expect(all, "the status line is rendered (data-status)").toContain("data-status");
+    expect(all, "the app registers the service worker").toMatch(/serviceWorker\s*\.\s*register/);
+    expect(all, "the engine runs in a Web Worker").toMatch(/new\s+Worker\s*\(/);
+    expect(assets.length, "the worker is its own bundle").toBeGreaterThan(1);
+    const worker = js.filter((src) => !/new\s+Worker\s*\(/.test(src) && !src.includes("data-square"));
+    expect(worker.some((src) => /onmessage|addEventListener\(\s*["']message/.test(src)),
+      "a bundle that answers messages (the engine worker)").toBe(true);
   }, 120_000);
 });

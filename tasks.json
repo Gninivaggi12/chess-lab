@@ -415,5 +415,58 @@
       "tests/pwa_build.test.ts"
     ],
     "passes": false
+  },
+  {
+    "id": "pwa-subpath",
+    "title": "PWA: the built app works under a sub-path (GitHub Pages): relative URLs in index.html, manifest, service worker and its registration",
+    "depends_on": [
+      "pwa-build"
+    ],
+    "tests": [
+      "tests/pwa_subpath.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-visual",
+    "title": "UI look: the board and pieces are actually drawn on a phone screen (real-browser check: grid, colours, pieces, fit, tap targets, real clicks)",
+    "depends_on": [
+      "ui-board",
+      "ui-rules",
+      "ui-flip",
+      "ui-newgame",
+      "ui-undo",
+      "ui-clock",
+      "ui-flag",
+      "ui-sound",
+      "ui-persist",
+      "ui-premove"
+    ],
+    "tests": [
+      "tests/ui_visual.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-layout",
+    "title": "Screen layout like chess.com at 6 window sizes (phone to desktop): player bars around the board, board as large as the window allows, side panel on wide windows, action bar on phones, settings tucked away; nothing scrolls to play",
+    "depends_on": [
+      "ui-visual"
+    ],
+    "tests": [
+      "tests/ui_layout.test.ts"
+    ],
+    "passes": false
+  },
+  {
+    "id": "ui-board-look",
+    "title": "Board look and handling like chess.com: green/cream squares, coordinates inside edge squares, cburnett pieces, legal-move markers, last-move tint, drag-and-drop, numbered move list, settings with credits, dark page",
+    "depends_on": [
+      "ui-layout"
+    ],
+    "tests": [
+      "tests/ui_board_look.test.ts"
+    ],
+    "passes": false
   }
 ]

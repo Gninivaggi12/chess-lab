@@ -25,6 +25,7 @@ describe("offline", () => {
     const sw = read("public/sw.js");
     expect(sw).toMatch(/caches\.open/);
     expect(sw).toMatch(/addEventListener\(\s*["']fetch["']/);
-    expect(appSources()).toMatch(/serviceWorker\.register\(\s*["'`]\/sw\.js["'`]/);
+    expect(appSources()).toMatch(/serviceWorker\.register\(/);
+    expect(appSources()).toMatch(/sw\.js/);
   });
 });

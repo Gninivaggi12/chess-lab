@@ -1,5 +1,6 @@
 """PreToolUse hook: block file-tool writes to the oracle (tests/, SPEC.md, tasks.json),
-to ANSWERS.md / REVIEW.md (only the harness records Gio's answers and review findings) and
+to ANSWERS.md / REVIEW.md / VERIFY.md (only the harness records Gio's answers, review findings
+and verification failures) and
 to .claude/ (the guardrail settings, these hooks, and HARNESS.json's test command).
 
 Third layer behind the Edit deny rules and the sandbox. Its job is the message: it
@@ -11,7 +12,7 @@ import sys
 import os
 import pathlib
 
-PROTECTED = ("/tests/", "/tasks.json", "/SPEC.md", "/ANSWERS.md", "/REVIEW.md", "/.claude/")
+PROTECTED = ("/tests/", "/tasks.json", "/SPEC.md", "/ANSWERS.md", "/REVIEW.md", "/VERIFY.md", "/.claude/")
 # Project-specific extras recorded by install.py --protect (e.g. shared types, lockfile).
 harness = pathlib.Path(os.environ.get("CLAUDE_PROJECT_DIR", ".")) / ".claude" / "HARNESS.json"
 if harness.exists():
