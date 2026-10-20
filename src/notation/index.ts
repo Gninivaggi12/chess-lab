@@ -99,3 +99,55 @@ export function toPGN(game: { startFen: string; moves: string[]; headers: Record
   tokens.push(h.Result ?? "*");
   return `${lines.join("\n")}\n\n${tokens.join(" ")}\n`;
 }
+
+export function parsePGN(pgn: string): { startFen: string; moves: string[]; headers: Record<string, string> } {
+  const headers: Record<string, string> = {};
+  const text = pgn.replace(/^\uFEFF/, "");
+  let i = 0;
+  const n = text.length;
+  // Tag pairs: [Name "value"] before the move text.
+  for (;;) {
+    while (i < n && /\s/.test(text[i])) i++;
+    if (text[i] === ";") {
+      while (i < n && text[i] !== "\n") i++;
+      continue;
+    }
+    if (text[i] !== "[") break;
+    const m = /^\[\s*(\w+)\s+"((?:[^"\\]|\\.)*)"\s*\]/.exec(text.slice(i));
+    if (!m) break;
+    headers[m[1]] = m[2].replace(/\\(["\\])/g, "$1");
+    i += m[0].length;
+  }
+  const startFen = headers.FEN ?? INITIAL;
+  const moves: string[] = [];
+  let fen = startFen;
+  let depth = 0;
+  while (i < n) {
+    const c = text[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === "{") {
+      const e = text.indexOf("}", i);
+      i = e < 0 ? n : e + 1;
+      continue;
+    }
+    if (c === ";") {
+      while (i < n && text[i] !== "\n") i++;
+      continue;
+    }
+    if (c === "(") { depth++; i++; continue; }
+    if (c === ")") { if (depth > 0) depth--; i++; continue; }
+    const m = /^[^\s{};()]+/.exec(text.slice(i))!;
+    i += m[0].length;
+    if (depth > 0) continue;
+    let tok = m[0];
+    if (/^(1-0|0-1|1\/2-1\/2|\*)$/.test(tok)) break;
+    if (tok[0] === "$") continue;
+    tok = tok.replace(/^\d+\.*/, "");
+    if (!tok) continue;
+    const uci = fromSAN(fen, tok);
+    if (!uci) throw new Error(`Illegal move in PGN: ${m[0]}`);
+    moves.push(uci);
+    fen = applyMove(fen, uci);
+  }
+  return { startFen, moves, headers };
+}
