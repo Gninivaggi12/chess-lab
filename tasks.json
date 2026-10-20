@@ -403,7 +403,7 @@
     "tests": [
       "tests/pwa_offline.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "pwa-build",
