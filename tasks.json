@@ -56,7 +56,8 @@
     "id": "core-moves-promotion",
     "title": "Core: legalMoves with promotions (all four pieces, by push and by capture)",
     "depends_on": [
-      "core-moves-basic"
+      "core-moves-basic",
+      "core-moves-castling"
     ],
     "tests": [
       "tests/moves_promotion.test.ts"
@@ -68,7 +69,8 @@
     "title": "Core: legalMoves with en passant (including the rank pin that makes it illegal)",
     "depends_on": [
       "core-moves-basic",
-      "core-moves-check"
+      "core-moves-check",
+      "core-moves-castling"
     ],
     "tests": [
       "tests/moves_en_passant.test.ts"
