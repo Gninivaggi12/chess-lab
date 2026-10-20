@@ -56,7 +56,7 @@ export function mountApp(root: HTMLElement, deps: {
   const startFen = INITIAL_FEN;
   const human = "w";
   const level = 3;
-  const flipped = false;
+  let flipped = false;
   const moves: string[] = [];
   const sans: string[] = [];
   let fen = startFen;
@@ -75,7 +75,14 @@ export function mountApp(root: HTMLElement, deps: {
   listEl.setAttribute("data-move-list", "");
   const promoEl = document.createElement("div");
   promoEl.setAttribute("data-promotion", "");
-  root.replaceChildren(boardEl, promoEl, statusEl, listEl);
+  const actionsEl = document.createElement("div");
+  actionsEl.setAttribute("data-actions", "");
+  const flipBtn = document.createElement("button");
+  flipBtn.setAttribute("data-action", "flip");
+  flipBtn.textContent = "Flip";
+  flipBtn.addEventListener("click", () => { if (destroyed) return; flipped = !flipped; render(); });
+  actionsEl.append(flipBtn);
+  root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl);
 
   const turn = () => fen.split(" ")[1];
   const isOver = () => statusText(startFen, moves, fen).over;
