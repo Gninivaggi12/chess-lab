@@ -118,7 +118,7 @@
       "tests/apply_special.test.ts",
       "tests/apply_illegal.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-position-status",
