@@ -68,3 +68,34 @@ export function fromSAN(fen: string, san: string): string | null {
   });
   return found.length === 1 ? found[0] : null;
 }
+
+const INITIAL = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const ROSTER = ["Event", "Site", "Date", "Round", "White", "Black", "Result"];
+const ROSTER_DEFAULT: Record<string, string> = { Date: "????.??.??", Result: "*" };
+
+export function toPGN(game: { startFen: string; moves: string[]; headers: Record<string, string> }): string {
+  const h = game.headers ?? {};
+  const tag = (k: string, v: string) => `[${k} "${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`;
+  const lines = ROSTER.map((k) => tag(k, h[k] ?? ROSTER_DEFAULT[k] ?? "?"));
+  if (game.startFen !== INITIAL) {
+    lines.push(tag("SetUp", "1"), tag("FEN", game.startFen));
+  }
+  for (const k of Object.keys(h)) {
+    if (!ROSTER.includes(k) && k !== "SetUp" && k !== "FEN") lines.push(tag(k, h[k]));
+  }
+  const fields = game.startFen.split(" ");
+  let black = fields[1] === "b";
+  let num = Number(fields[5]) || 1;
+  const tokens: string[] = [];
+  let fen = game.startFen;
+  game.moves.forEach((uci, i) => {
+    if (!black) tokens.push(`${num}.`);
+    else if (i === 0) tokens.push(`${num}...`);
+    tokens.push(toSAN(fen, uci));
+    fen = applyMove(fen, uci);
+    if (black) num++;
+    black = !black;
+  });
+  tokens.push(h.Result ?? "*");
+  return `${lines.join("\n")}\n\n${tokens.join(" ")}\n`;
+}
