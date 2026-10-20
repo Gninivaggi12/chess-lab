@@ -1,5 +1,7 @@
 import { applyMove, gameStatus, inCheck, INITIAL_FEN, legalMoves, premoveTargets } from "../core/index.ts";
 import type { SoundKind, Uci } from "../core/types.ts";
+import { createClock } from "../clock/index.ts";
+import type { Clock, ClockState } from "../clock/index.ts";
 import { toSAN } from "../notation/index.ts";
 import { play, soundFor } from "../sound/index.ts";
 
@@ -28,6 +30,14 @@ function workerEngine(): EngineLike {
       });
     },
   };
+}
+
+interface TimeControl { initialMs: number; incrementMs: number; }
+
+function formatClock(ms: number): string {
+  if (ms < 10_000) return `0:0${(Math.floor(ms / 100) / 10).toFixed(1)}`;
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 function statusText(startFen: string, moves: string[], fen: string): { text: string; over: boolean } {
@@ -80,6 +90,18 @@ export function mountApp(root: HTMLElement, deps: {
       }
     }
   } catch { /* unreadable save: start fresh */ }
+  const now = deps.now ?? (() => performance.now());
+  let timeControl: TimeControl | null = null;
+  let clock: Clock | null = null;
+  const makeClock = (from?: ClockState) =>
+    timeControl ? createClock({ ...timeControl, from }, now) : null;
+  try {
+    const tc = JSON.parse(storage?.getItem(GAME_KEY) ?? "null")?.clock;
+    if (tc && Number.isFinite(tc.initialMs) && Number.isFinite(tc.incrementMs) && tc.state) {
+      timeControl = { initialMs: tc.initialMs, incrementMs: tc.incrementMs };
+      clock = makeClock(tc.state);
+    }
+  } catch { /* unreadable save: no clock */ }
   let selected: string | null = null;
   let pendingPromotion: { from: string; to: string } | null = null;
   let thinking = false;
@@ -149,6 +171,28 @@ export function mountApp(root: HTMLElement, deps: {
   colorSel.value = human;
   actionsEl.append(newGameBtn, undoBtn, flipBtn, muteBtn);
   root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl, settingsEl);
+
+  function save() {
+    const c = timeControl && clock ? { ...timeControl, state: clock.snapshot() } : undefined;
+    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves, human, level, clock: c })); } catch { /* ignore */ }
+  }
+
+  const clockEls = { w: document.createElement("div"), b: document.createElement("div") };
+  for (const c of ["w", "b"] as const) clockEls[c].setAttribute("data-clock", c);
+  root.append(clockEls.w, clockEls.b);
+
+  function renderClocks() {
+    const running = clock && moves.length > 0 && !isOver() ? turn() : null;
+    for (const c of ["w", "b"] as const) {
+      clockEls[c].textContent = clock ? formatClock(clock.remaining(c)) : "";
+      clockEls[c].toggleAttribute("data-active", c === running);
+    }
+  }
+  const ticker = setInterval(() => {
+    if (destroyed || !clock) return;
+    renderClocks();
+    save();
+  }, 100);
 
   const turn = () => fen.split(" ")[1];
   const isOver = () => statusText(startFen, moves, fen).over;
@@ -259,6 +303,7 @@ export function mountApp(root: HTMLElement, deps: {
       el.textContent = san;
       return el;
     }));
+    renderClocks();
     if (thinking) root.setAttribute("data-thinking", ""); else root.removeAttribute("data-thinking");
   }
 
@@ -309,13 +354,16 @@ export function mountApp(root: HTMLElement, deps: {
 
   function playMove(uci: string) {
     const san = toSAN(fen, uci);
+    const mover = turn() as "w" | "b";
     fen = applyMove(fen, uci);
     moves.push(uci);
     sans.push(san);
-    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves, human, level })); } catch { /* ignore */ }
+    clock?.press(mover);
     selected = null;
     thinking = false;
     const over = isOver();
+    if (over) clock?.pause();
+    save();
     if (!muted) sound.play(soundFor(san, over));
     if (!over && turn() !== human) engineTurn();
     render();
@@ -335,7 +383,17 @@ export function mountApp(root: HTMLElement, deps: {
     fen = startFen;
     moves = [];
     sans = [];
-    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves, human, level })); } catch { /* ignore */ }
+    const choice = timeSel.value;
+    const m = /^(\d+)\+(\d+)$/.exec(choice);
+    if (m) timeControl = { initialMs: Number(m[1]) * 60_000, incrementMs: Number(m[2]) * 1000 };
+    else if (choice === "custom") {
+      timeControl = {
+        initialMs: Math.max(0, Number(customMin.value) || 0) * 60_000,
+        incrementMs: Math.max(0, Number(customInc.value) || 0) * 1000,
+      };
+    } else timeControl = null;
+    clock = makeClock();
+    save();
     if (turn() !== human) engineTurn();
     render();
   }
@@ -356,7 +414,12 @@ export function mountApp(root: HTMLElement, deps: {
       } else if (pm) render();
     };
     timer = setTimeout(() => { waited = true; finish(); }, MIN_THINK_MS);
-    engine.bestMove(fen, level).then((m) => { reply = m; finish(); });
+    let limit: number | undefined;
+    if (clock) {
+      const rem = clock.remaining(turn() as "w" | "b");
+      limit = Math.max(1, Math.min(rem / 30 + timeControl!.incrementMs, rem - 100));
+    }
+    engine.bestMove(fen, level, limit).then((m) => { reply = m; finish(); });
   }
 
   render();
@@ -365,6 +428,7 @@ export function mountApp(root: HTMLElement, deps: {
   return {
     destroy() {
       destroyed = true;
+      clearInterval(ticker);
       generation++;
       clearTimeout(timer);
       root.replaceChildren();
