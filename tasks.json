@@ -416,7 +416,7 @@
     "tests": [
       "tests/pwa_build.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "pwa-subpath",
