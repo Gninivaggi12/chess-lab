@@ -4,6 +4,7 @@ import type { Color } from "./types.ts";
 
 export { INITIAL_FEN };
 export { legalMoves } from "./moves.ts";
+import { makeMove } from "./perft.ts";
 export { perft } from "./perft.ts";
 
 export function isValidFEN(fen: string): boolean {
@@ -131,4 +132,10 @@ export function premoveTargets(fen: string, square: string): string[] {
     }
   }
   return out;
+}
+
+export function applyMove(fen: string, uci: string): string {
+  if (!isValidFEN(fen)) throw new Error(`invalid FEN: ${fen}`);
+  if (!legalMoves(fen).includes(uci)) throw new Error(`illegal move ${uci} in ${fen}`);
+  return normalizeFEN(makeMove(fen, uci));
 }
