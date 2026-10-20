@@ -1,4 +1,4 @@
-import { applyMove, gameStatus, inCheck, INITIAL_FEN, legalMoves } from "../core/index.ts";
+import { applyMove, gameStatus, inCheck, INITIAL_FEN, legalMoves, premoveTargets } from "../core/index.ts";
 import type { SoundKind, Uci } from "../core/types.ts";
 import { toSAN } from "../notation/index.ts";
 import { play, soundFor } from "../sound/index.ts";
@@ -68,6 +68,7 @@ export function mountApp(root: HTMLElement, deps: {
   let selected: string | null = null;
   let pendingPromotion: { from: string; to: string } | null = null;
   let thinking = false;
+  let premove: { from: string; to: string; promo?: string } | null = null;
   let generation = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let destroyed = false;
@@ -135,7 +136,7 @@ export function mountApp(root: HTMLElement, deps: {
     muteBtn.textContent = muted ? "Unmute" : "Mute";
     const pieces = pieceMap();
     const last = moves.length ? moves[moves.length - 1] : null;
-    const targets = selected ? targetsOf(selected) : [];
+    const targets = selected ? (thinking ? premoveTargets(fen, selected) : targetsOf(selected)) : [];
     const checkSquare = inCheck(fen)
       ? [...pieces].find(([, p]) => p === turn() + "K")?.[0]
       : undefined;
@@ -145,6 +146,7 @@ export function mountApp(root: HTMLElement, deps: {
       if (sq === selected) el.setAttribute("data-selected", "");
       if (targets.includes(sq)) el.setAttribute("data-target", "");
       if (last && (sq === last.slice(0, 2) || sq === last.slice(2, 4))) el.setAttribute("data-last-move", "");
+      if (premove && (sq === premove.from || sq === premove.to)) el.setAttribute("data-premove", "");
       if (sq === checkSquare) el.setAttribute("data-check", "");
       const p = pieces.get(sq);
       if (p) {
@@ -166,7 +168,7 @@ export function mountApp(root: HTMLElement, deps: {
         b.addEventListener("click", () => {
           const { from, to } = pendingPromotion!;
           pendingPromotion = null;
-          playMove(from + to + p);
+          if (thinking) { premove = { from, to, promo: p }; render(); } else playMove(from + to + p);
         });
         promoEl.append(b);
       }
@@ -183,7 +185,9 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function onSquare(sq: string) {
-    if (destroyed || thinking || isOver() || turn() !== human || pendingPromotion) return;
+    if (destroyed || isOver() || pendingPromotion) return;
+    if (thinking) { onPremoveSquare(sq); return; }
+    if (turn() !== human) return;
     if (selected && targetsOf(selected).includes(sq)) {
       const from = selected;
       selected = null;
@@ -197,6 +201,31 @@ export function mountApp(root: HTMLElement, deps: {
     }
     const own = pieceMap().get(sq)?.[0] === human;
     selected = own && sq !== selected ? sq : null;
+    render();
+  }
+
+  function onPremoveSquare(sq: string) {
+    const pieces = pieceMap();
+    if (selected && premoveTargets(fen, selected).includes(sq)) {
+      const from = selected;
+      selected = null;
+      premove = null;
+      if (pieces.get(from)?.[1] === "P" && (sq[1] === "8" || sq[1] === "1")) {
+        pendingPromotion = { from, to: sq };
+      } else {
+        premove = { from, to: sq };
+      }
+      render();
+      return;
+    }
+    const own = pieces.get(sq)?.[0] === human;
+    if (own && sq !== premove?.from) {
+      premove = null;
+      selected = sq !== selected ? sq : null;
+    } else {
+      premove = null;
+      selected = null;
+    }
     render();
   }
 
@@ -221,6 +250,12 @@ export function mountApp(root: HTMLElement, deps: {
     const finish = () => {
       if (destroyed || gen !== generation || !waited || reply === undefined) return;
       playMove(reply);
+      const pm = premove;
+      premove = null;
+      if (pm && !destroyed && gen === generation && !isOver() && turn() === human) {
+        const uci = pm.from + pm.to + (pm.promo ?? "");
+        if (legalMoves(fen).includes(uci)) playMove(uci); else render();
+      } else if (pm) render();
     };
     timer = setTimeout(() => { waited = true; finish(); }, MIN_THINK_MS);
     engine.bestMove(fen, level).then((m) => { reply = m; finish(); });
