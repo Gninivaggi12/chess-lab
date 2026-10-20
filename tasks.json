@@ -50,7 +50,7 @@
     "tests": [
       "tests/moves_castling.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-promotion",
