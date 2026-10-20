@@ -145,7 +145,7 @@
     "tests": [
       "tests/status_game.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-timeout",
