@@ -65,6 +65,18 @@ export function mountApp(root: HTMLElement, deps: {
   const moves: string[] = [];
   const sans: string[] = [];
   let fen = startFen;
+  const GAME_KEY = "chess-lab:game";
+  try {
+    const saved = JSON.parse(storage?.getItem(GAME_KEY) ?? "null");
+    if (saved && saved.startFen === startFen && Array.isArray(saved.moves)) {
+      for (const m of saved.moves) {
+        const san = toSAN(fen, m);
+        fen = applyMove(fen, m);
+        moves.push(m);
+        sans.push(san);
+      }
+    }
+  } catch { /* unreadable save: start fresh */ }
   let selected: string | null = null;
   let pendingPromotion: { from: string; to: string } | null = null;
   let thinking = false;
@@ -205,6 +217,7 @@ export function mountApp(root: HTMLElement, deps: {
     fen = applyMove(fen, uci);
     moves.push(uci);
     sans.push(san);
+    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves })); } catch { /* ignore */ }
     selected = null;
     thinking = false;
     const over = isOver();
