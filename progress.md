@@ -8,3 +8,4 @@ Each session appends 3-5 lines: what it did, what broke, what's next.
 - core-in-check (exp-a-4-b): added `inCheck(fen)` to src/core/index.ts (parseFEN + isAttacked on the side to move's king; throws on malformed FEN). tests/in_check.test.ts passes; fen_valid and clock still pass. Claimed.
 - Next: core-moves-basic (reuse parseFEN/isAttacked from board.ts).
 - Earlier note: other core tasks (inCheck, moves) can reuse parseFEN/isAttacked from board.ts and re-export from index.ts.
+- exp-a-4-a: built `src/sound/index.ts` (pure `soundFor`, synthesized Web Audio `play`, best-effort/no-op without AudioContext); tests/sound.test.ts passes 495/495, claimed `sound`. Sound quality is untested by design (Gio judges). The "unlock on first tap" and the low-time trigger belong to the UI tasks.
