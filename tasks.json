@@ -226,7 +226,7 @@
       "tests/engine_legal.test.ts",
       "tests/engine_behavior.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "engine-mate1",
