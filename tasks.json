@@ -211,7 +211,7 @@
     "tests": [
       "tests/pgn_in.test.ts"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "engine-search",
@@ -246,7 +246,7 @@
     "tests": [
       "tests/engine_mate2.test.ts"
     ],
-    "passes": true
+    "passes": false
   },
   {
     "id": "clock",
