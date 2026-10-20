@@ -201,7 +201,7 @@
     "tests": [
       "tests/pgn_out.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "notation-pgn-in",
