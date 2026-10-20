@@ -33,3 +33,38 @@ export function toSAN(fen: string, uci: string): string {
   if (inCheck(next)) san += legalMoves(next).length === 0 ? "#" : "+";
   return san;
 }
+
+/**
+ * Parses SAN into a UCI move. Tolerates a missing or extra +/#, `0-0`, and !/? annotations.
+ * Returns null if the move is illegal or ambiguous.
+ */
+export function fromSAN(fen: string, san: string): string | null {
+  const pos = parseFEN(fen);
+  if (!pos) return null;
+  const text = san.trim().replace(/[!?]+$/, "").replace(/[+#]+$/, "").replace(/0/g, "O");
+  const moves = legalMoves(fen);
+  const castle = /^O-O(-O)?$/.exec(text);
+  if (castle) {
+    const found = moves.filter((u) => {
+      const p = pos.board[sqIndex(u.slice(0, 2))]!;
+      return p.type === "k" && u[2] === (castle[1] ? "c" : "g") &&
+        Math.abs(u.charCodeAt(0) - u.charCodeAt(2)) === 2;
+    });
+    return found.length === 1 ? found[0] : null;
+  }
+  const m = /^([NBRQK])?([a-h])?([1-8])?(x)?([a-h][1-8])(?:=?([NBRQ]))?$/.exec(text);
+  if (!m) return null;
+  const [, pc, file, rank, x, to, promo] = m;
+  const type = (pc ?? "P").toLowerCase();
+  const found = moves.filter((u) => {
+    const from = u.slice(0, 2);
+    const piece = pos.board[sqIndex(from)]!;
+    if (piece.type !== type || u.slice(2, 4) !== to) return false;
+    if (file && from[0] !== file) return false;
+    if (rank && from[1] !== rank) return false;
+    const capture = pos.board[sqIndex(to)] !== null || (type === "p" && from[0] !== to[0]);
+    if (!!x !== capture) return false;
+    return (u[4] ?? "") === (promo ?? "").toLowerCase();
+  });
+  return found.length === 1 ? found[0] : null;
+}
