@@ -179,7 +179,7 @@
     "tests": [
       "tests/san_out.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "notation-san-in",
