@@ -53,6 +53,11 @@ export function mountApp(root: HTMLElement, deps: {
   const engine = deps.engine ?? workerEngine();
   const sound = deps.sound ?? { play };
 
+  const storage = deps.storage ?? (typeof localStorage !== "undefined" ? localStorage : undefined);
+  const MUTE_KEY = "chess-lab:muted";
+  let muted = false;
+  try { muted = storage?.getItem(MUTE_KEY) === "1"; } catch { /* storage unavailable */ }
+
   const startFen = INITIAL_FEN;
   const human = "w";
   const level = 3;
@@ -81,7 +86,15 @@ export function mountApp(root: HTMLElement, deps: {
   flipBtn.setAttribute("data-action", "flip");
   flipBtn.textContent = "Flip";
   flipBtn.addEventListener("click", () => { if (destroyed) return; flipped = !flipped; render(); });
-  actionsEl.append(flipBtn);
+  const muteBtn = document.createElement("button");
+  muteBtn.setAttribute("data-action", "mute");
+  muteBtn.addEventListener("click", () => {
+    if (destroyed) return;
+    muted = !muted;
+    try { storage?.setItem(MUTE_KEY, muted ? "1" : "0"); } catch { /* ignore */ }
+    render();
+  });
+  actionsEl.append(flipBtn, muteBtn);
   root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl);
 
   const turn = () => fen.split(" ")[1];
@@ -118,6 +131,8 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function render() {
+    muteBtn.toggleAttribute("data-muted", muted);
+    muteBtn.textContent = muted ? "Unmute" : "Mute";
     const pieces = pieceMap();
     const last = moves.length ? moves[moves.length - 1] : null;
     const targets = selected ? targetsOf(selected) : [];
@@ -193,7 +208,7 @@ export function mountApp(root: HTMLElement, deps: {
     selected = null;
     thinking = false;
     const over = isOver();
-    sound.play(soundFor(san, over));
+    if (!muted) sound.play(soundFor(san, over));
     if (!over && turn() !== human) engineTurn();
     render();
   }
