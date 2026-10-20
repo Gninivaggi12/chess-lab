@@ -60,6 +60,7 @@ export function mountApp(root: HTMLElement, deps: {
 
   const startFen = INITIAL_FEN;
   let human = "w";
+  let clocked = false;
   let level = 3;
   let flipped = false;
   let moves: string[] = [];
@@ -113,6 +114,10 @@ export function mountApp(root: HTMLElement, deps: {
   newGameBtn.setAttribute("data-action", "new-game");
   newGameBtn.textContent = "New game";
   newGameBtn.addEventListener("click", () => { if (!destroyed) newGame(); });
+  const undoBtn = document.createElement("button");
+  undoBtn.setAttribute("data-action", "undo");
+  undoBtn.textContent = "Undo";
+  undoBtn.addEventListener("click", () => { if (!destroyed) undo(); });
   const settingsEl = document.createElement("div");
   settingsEl.setAttribute("data-settings", "");
   const makeSelect = (attr: string, options: [string, string][], def: string) => {
@@ -142,7 +147,7 @@ export function mountApp(root: HTMLElement, deps: {
   settingsEl.append(levelSel, colorSel, timeSel, customMin, customInc);
   levelSel.value = String(level);
   colorSel.value = human;
-  actionsEl.append(newGameBtn, flipBtn, muteBtn);
+  actionsEl.append(newGameBtn, undoBtn, flipBtn, muteBtn);
   root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl, settingsEl);
 
   const turn = () => fen.split(" ")[1];
@@ -178,7 +183,33 @@ export function mountApp(root: HTMLElement, deps: {
     return [...new Set(legalMoves(fen).filter((m) => m.startsWith(from)).map((m) => m.slice(2, 4)))];
   }
 
+  // Length the game returns to on undo (your last move and the reply), or -1 if there is none.
+  function undoTarget(): number {
+    if (clocked) return -1;
+    const lastMover = fen.split(" ")[1] === "w" ? "b" : "w";
+    const n = moves.length - (lastMover === human ? 1 : 2);
+    return n >= 0 && (n % 2 === 0 ? "w" : "b") === human ? n : -1;
+  }
+
+  function undo() {
+    const n = undoTarget();
+    if (n < 0) return;
+    generation++;
+    clearTimeout(timer);
+    thinking = false;
+    selected = null;
+    pendingPromotion = null;
+    premove = null;
+    moves = moves.slice(0, n);
+    sans = sans.slice(0, n);
+    fen = startFen;
+    for (const m of moves) fen = applyMove(fen, m);
+    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves, human, level })); } catch { /* ignore */ }
+    render();
+  }
+
   function render() {
+    undoBtn.disabled = undoTarget() < 0;
     muteBtn.toggleAttribute("data-muted", muted);
     muteBtn.textContent = muted ? "Unmute" : "Mute";
     const pieces = pieceMap();
@@ -300,6 +331,7 @@ export function mountApp(root: HTMLElement, deps: {
     const c = colorSel.value;
     human = c === "w" || c === "b" ? c : (deps.random ?? Math.random)() < 0.5 ? "w" : "b";
     flipped = human === "b";
+    clocked = timeSel.value !== "none";
     fen = startFen;
     moves = [];
     sans = [];
