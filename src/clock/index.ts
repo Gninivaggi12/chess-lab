@@ -6,17 +6,21 @@ export interface Clock {
   flagged(): Color | null;
   pause(): void;
   resume(): void;
+  /** Settled state, to save a game and restore it with `from`. */
+  snapshot(): ClockState;
 }
 
+export interface ClockState { w: number; b: number; started: boolean; running: Color | null; }
+
 export function createClock(
-  { initialMs, incrementMs }: { initialMs: number; incrementMs: number },
+  { initialMs, incrementMs, from }: { initialMs: number; incrementMs: number; from?: ClockState },
   now: () => number,
 ): Clock {
-  const left: Record<Color, number> = { w: initialMs, b: initialMs };
-  let running: Color | null = null; // side whose time is counting down
+  const left: Record<Color, number> = from ? { w: from.w, b: from.b } : { w: initialMs, b: initialMs };
+  let running: Color | null = from?.running ?? null; // side whose time is counting down
   let paused = false;
-  let started = false;
-  let stamp = 0; // now() when `left[running]` was last settled
+  let started = from?.started ?? false;
+  let stamp = from ? now() : 0; // now() when `left[running]` was last settled
 
   // Move elapsed time off the running side's balance.
   const settle = () => {
@@ -54,6 +58,10 @@ export function createClock(
       return left[color];
     },
     flagged: flaggedSide,
+    snapshot() {
+      settle();
+      return { w: left.w, b: left.b, started, running };
+    },
     pause() {
       settle();
       paused = true;
