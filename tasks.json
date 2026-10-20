@@ -62,7 +62,7 @@
     "tests": [
       "tests/moves_promotion.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-en-passant",

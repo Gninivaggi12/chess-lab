@@ -7,7 +7,7 @@ const KING = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-/** Legal ordinary moves (no en passant or promotion yet). Throws on a malformed FEN. */
+/** Legal moves including castling and promotions (no en passant yet). Throws on a malformed FEN. */
 export function legalMoves(fen: string): Uci[] {
   const pos = parseFEN(fen);
   if (!pos) throw new Error(`invalid FEN: ${fen}`);
@@ -15,11 +15,15 @@ export function legalMoves(fen: string): Uci[] {
   const other: Color = turn === "w" ? "b" : "w";
   const out: Uci[] = [];
 
-  const tryMove = (from: number, to: number) => {
+  const tryMove = (from: number, to: number, promo = "") => {
     const next = board.slice();
     next[to] = next[from];
     next[from] = null;
-    if (!isAttacked(next, findKing(next, turn), other)) out.push(sqName(from) + sqName(to));
+    if (!isAttacked(next, findKing(next, turn), other)) out.push(sqName(from) + sqName(to) + promo);
+  };
+  const tryPawn = (from: number, to: number, lastRank: number) => {
+    if (to >> 3 !== lastRank) tryMove(from, to);
+    else for (const q of ["q", "r", "b", "n"]) tryMove(from, to, q);
   };
 
   const castle = (from: number) => {
@@ -72,14 +76,14 @@ export function legalMoves(fen: string): Uci[] {
       const startRank = turn === "w" ? 6 : 1;
       const lastRank = turn === "w" ? 0 : 7;
       const one = target(0, dr);
-      if (one >= 0 && !board[one] && one >> 3 !== lastRank) {
-        tryMove(from, one);
+      if (one >= 0 && !board[one]) {
+        tryPawn(from, one, lastRank);
         const two = target(0, 2 * dr);
         if (rank === startRank && !board[two]) tryMove(from, two);
       }
       for (const df of [-1, 1]) {
         const t = target(df, dr);
-        if (t >= 0 && board[t] && board[t]!.color === other && t >> 3 !== lastRank) tryMove(from, t);
+        if (t >= 0 && board[t] && board[t]!.color === other) tryPawn(from, t, lastRank);
       }
     }
   }
