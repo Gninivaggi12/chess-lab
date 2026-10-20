@@ -6,7 +6,7 @@
     "tests": [
       "tests/fen_valid.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-in-check",
