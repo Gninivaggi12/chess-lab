@@ -59,16 +59,18 @@ export function mountApp(root: HTMLElement, deps: {
   try { muted = storage?.getItem(MUTE_KEY) === "1"; } catch { /* storage unavailable */ }
 
   const startFen = INITIAL_FEN;
-  const human = "w";
-  const level = 3;
+  let human = "w";
+  let level = 3;
   let flipped = false;
-  const moves: string[] = [];
-  const sans: string[] = [];
+  let moves: string[] = [];
+  let sans: string[] = [];
   let fen = startFen;
   const GAME_KEY = "chess-lab:game";
   try {
     const saved = JSON.parse(storage?.getItem(GAME_KEY) ?? "null");
     if (saved && saved.startFen === startFen && Array.isArray(saved.moves)) {
+      if (saved.human === "b") { human = "b"; flipped = true; }
+      if (Number.isInteger(saved.level) && saved.level >= 1 && saved.level <= 5) level = saved.level;
       for (const m of saved.moves) {
         const san = toSAN(fen, m);
         fen = applyMove(fen, m);
@@ -106,8 +108,41 @@ export function mountApp(root: HTMLElement, deps: {
     try { storage?.setItem(MUTE_KEY, muted ? "1" : "0"); } catch { /* ignore */ }
     render();
   });
-  actionsEl.append(flipBtn, muteBtn);
-  root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl);
+  const newGameBtn = document.createElement("button");
+  newGameBtn.setAttribute("data-action", "new-game");
+  newGameBtn.textContent = "New game";
+  newGameBtn.addEventListener("click", () => { if (!destroyed) newGame(); });
+  const settingsEl = document.createElement("div");
+  settingsEl.setAttribute("data-settings", "");
+  const makeSelect = (attr: string, options: [string, string][], def: string) => {
+    const el = document.createElement("select");
+    el.setAttribute(attr, "");
+    for (const [value, label] of options) {
+      const o = document.createElement("option");
+      o.value = value;
+      o.textContent = label;
+      el.append(o);
+    }
+    el.value = def;
+    return el;
+  };
+  const levelSel = makeSelect("data-level", [1, 2, 3, 4, 5].map((n) => [String(n), `Level ${n}`]), "3");
+  const colorSel = makeSelect("data-color", [["w", "White"], ["b", "Black"], ["random", "Random"]], "w");
+  const timeSel = makeSelect("data-time-control",
+    ["none", "1+0", "3+0", "3+2", "5+0", "10+0", "15+10", "30+0", "custom"].map((v) => [v, v === "none" ? "No clock" : v]), "none");
+  const customMin = document.createElement("input");
+  customMin.setAttribute("data-custom-minutes", "");
+  customMin.type = "number";
+  customMin.value = "10";
+  const customInc = document.createElement("input");
+  customInc.setAttribute("data-custom-increment", "");
+  customInc.type = "number";
+  customInc.value = "0";
+  settingsEl.append(levelSel, colorSel, timeSel, customMin, customInc);
+  levelSel.value = String(level);
+  colorSel.value = human;
+  actionsEl.append(newGameBtn, flipBtn, muteBtn);
+  root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl, settingsEl);
 
   const turn = () => fen.split(" ")[1];
   const isOver = () => statusText(startFen, moves, fen).over;
@@ -217,12 +252,30 @@ export function mountApp(root: HTMLElement, deps: {
     fen = applyMove(fen, uci);
     moves.push(uci);
     sans.push(san);
-    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves })); } catch { /* ignore */ }
+    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves, human, level })); } catch { /* ignore */ }
     selected = null;
     thinking = false;
     const over = isOver();
     if (!muted) sound.play(soundFor(san, over));
     if (!over && turn() !== human) engineTurn();
+    render();
+  }
+
+  function newGame() {
+    generation++;
+    clearTimeout(timer);
+    thinking = false;
+    selected = null;
+    pendingPromotion = null;
+    level = Number(levelSel.value) || 3;
+    const c = colorSel.value;
+    human = c === "w" || c === "b" ? c : (deps.random ?? Math.random)() < 0.5 ? "w" : "b";
+    flipped = human === "b";
+    fen = startFen;
+    moves = [];
+    sans = [];
+    try { storage?.setItem(GAME_KEY, JSON.stringify({ startFen, moves, human, level })); } catch { /* ignore */ }
+    if (turn() !== human) engineTurn();
     render();
   }
 
