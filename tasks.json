@@ -17,7 +17,7 @@
     "tests": [
       "tests/in_check.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-moves-basic",
