@@ -1,3 +1,4 @@
+import { legalMoves } from "./moves.ts";
 import { INITIAL_FEN, findKing, isAttacked, parseFEN, sqIndex } from "./board.ts";
 import type { Color } from "./types.ts";
 
@@ -44,6 +45,19 @@ export function isValidFEN(fen: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function normalizeFEN(fen: string): string {
+  const pos = isValidFEN(fen) ? parseFEN(fen) : null;
+  if (!pos) throw new Error(`invalid FEN: ${fen}`);
+  const f = fen.split(" ");
+  if (pos.ep) {
+    const ep = pos.ep;
+    const capture = legalMoves(fen).some((m) =>
+      m.slice(2, 4) === ep && m[0] !== ep[0] && pos.board[sqIndex(m.slice(0, 2))]?.type === "p");
+    if (!capture) f[3] = "-";
+  }
+  return f.join(" ");
 }
 
 export function timeoutResult(fen: string, flagged: Color): { result: "1-0" | "0-1" | "1/2-1/2"; reason: "timeout" | "timeout-vs-insufficient-material" } {
