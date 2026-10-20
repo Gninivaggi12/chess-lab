@@ -483,6 +483,6 @@
     "checks": [
       "engine-strength"
     ],
-    "passes": false
+    "passes": true
   }
 ]
