@@ -167,7 +167,7 @@
     "tests": [
       "tests/premove.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "notation-san-out",
