@@ -257,7 +257,7 @@
     "tests": [
       "tests/clock.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "sound",
