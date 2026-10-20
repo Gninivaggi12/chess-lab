@@ -7,7 +7,7 @@ const KING = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -
 const DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 const ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-/** Legal moves including castling and promotions (no en passant yet). Throws on a malformed FEN. */
+/** Legal moves including castling, promotions and en passant. Throws on a malformed FEN. */
 export function legalMoves(fen: string): Uci[] {
   const pos = parseFEN(fen);
   if (!pos) throw new Error(`invalid FEN: ${fen}`);
@@ -15,8 +15,9 @@ export function legalMoves(fen: string): Uci[] {
   const other: Color = turn === "w" ? "b" : "w";
   const out: Uci[] = [];
 
-  const tryMove = (from: number, to: number, promo = "") => {
+  const tryMove = (from: number, to: number, promo = "", captured = -1) => {
     const next = board.slice();
+    if (captured >= 0) next[captured] = null;
     next[to] = next[from];
     next[from] = null;
     if (!isAttacked(next, findKing(next, turn), other)) out.push(sqName(from) + sqName(to) + promo);
@@ -83,7 +84,9 @@ export function legalMoves(fen: string): Uci[] {
       }
       for (const df of [-1, 1]) {
         const t = target(df, dr);
-        if (t >= 0 && board[t] && board[t]!.color === other) tryPawn(from, t, lastRank);
+        if (t < 0) continue;
+        if (board[t] && board[t]!.color === other) tryPawn(from, t, lastRank);
+        else if (!board[t] && pos.ep === sqName(t)) tryMove(from, t, "", from + df);
       }
     }
   }
