@@ -90,7 +90,7 @@
     "tests": [
       "tests/perft.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "core-normalize",

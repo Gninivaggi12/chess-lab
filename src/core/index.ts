@@ -3,6 +3,7 @@ import type { Color } from "./types.ts";
 
 export { INITIAL_FEN };
 export { legalMoves } from "./moves.ts";
+export { perft } from "./perft.ts";
 
 export function isValidFEN(fen: string): boolean {
   try {
