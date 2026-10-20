@@ -66,3 +66,53 @@ export function inCheck(fen: string): boolean {
   const other: Color = pos.turn === "w" ? "b" : "w";
   return isAttacked(pos.board, findKing(pos.board, pos.turn), other);
 }
+
+export function premoveTargets(fen: string, square: string): string[] {
+  const pos = parseFEN(fen);
+  if (!pos) return [];
+  const piece = pos.board[sqIndex(square)];
+  if (!piece) return [];
+  const f = square.charCodeAt(0) - 97;
+  const r = Number(square[1]) - 1;
+  const out: string[] = [];
+  const add = (x: number, y: number) => {
+    if (x < 0 || x > 7 || y < 0 || y > 7) return false;
+    out.push("abcdefgh"[x] + (y + 1));
+    return true;
+  };
+  const ray = (dirs: number[][], once: boolean) => {
+    for (const [dx, dy] of dirs) {
+      for (let k = 1; k < 8; k++) {
+        if (!add(f + dx * k, r + dy * k) || once) break;
+      }
+    }
+  };
+  const ortho = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const diag = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+  switch (piece.type) {
+    case "r": ray(ortho, false); break;
+    case "b": ray(diag, false); break;
+    case "q": ray([...ortho, ...diag], false); break;
+    case "n":
+      for (const [dx, dy] of [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]]) add(f + dx, r + dy);
+      break;
+    case "k": {
+      ray([...ortho, ...diag], true);
+      const white = piece.color === "w";
+      if (square === (white ? "e1" : "e8")) {
+        if (pos.castling.includes(white ? "K" : "k")) add(6, r);
+        if (pos.castling.includes(white ? "Q" : "q")) add(2, r);
+      }
+      break;
+    }
+    case "p": {
+      const d = piece.color === "w" ? 1 : -1;
+      add(f, r + d);
+      if (r === (piece.color === "w" ? 1 : 6)) add(f, r + 2 * d);
+      add(f - 1, r + d);
+      add(f + 1, r + d);
+      break;
+    }
+  }
+  return out;
+}
