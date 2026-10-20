@@ -34,6 +34,21 @@ function workerEngine(): EngineLike {
 
 interface TimeControl { initialMs: number; incrementMs: number; }
 
+function pieceImg(code: string): HTMLImageElement {
+  const img = document.createElement("img");
+  img.src = `pieces/cburnett/${code}.svg`;
+  img.alt = "";
+  img.draggable = false;
+  return img;
+}
+
+function coordEl(text: string, kind: "rank" | "file"): HTMLElement {
+  const c = document.createElement("span");
+  c.setAttribute("data-coord", kind);
+  c.textContent = text;
+  return c;
+}
+
 function formatClock(ms: number): string {
   if (ms < 10_000) return `0:0${(Math.floor(ms / 100) / 10).toFixed(1)}`;
   const s = Math.floor(ms / 1000);
@@ -332,6 +347,7 @@ export function mountApp(root: HTMLElement, deps: {
     boardEl.replaceChildren(...squaresInOrder().map((sq) => {
       const el = document.createElement("div");
       el.setAttribute("data-square", sq);
+      if (("abcdefgh".indexOf(sq[0]) + Number(sq[1])) % 2 === 1) el.setAttribute("data-dark", "");
       if (sq === selected) el.setAttribute("data-selected", "");
       if (targets.includes(sq)) el.setAttribute("data-target", "");
       if (last && (sq === last.slice(0, 2) || sq === last.slice(2, 4))) el.setAttribute("data-last-move", "");
@@ -341,10 +357,15 @@ export function mountApp(root: HTMLElement, deps: {
       if (p) {
         const pe = document.createElement("span");
         pe.setAttribute("data-piece", p);
-        pe.textContent = GLYPHS[p[1]];
+        pe.append(pieceImg(p));
         el.append(pe);
       }
-      el.addEventListener("click", () => onSquare(sq));
+      // rank labels sit in the left column, file labels in the bottom row
+      const leftFile = flipped ? "h" : "a";
+      const bottomRank = flipped ? "8" : "1";
+      if (sq[0] === leftFile) el.append(coordEl(sq[1], "rank"));
+      if (sq[1] === bottomRank) el.append(coordEl(sq[0], "file"));
+      el.addEventListener("click", () => { if (!suppressClick) onSquare(sq); });
       return el;
     }));
 
@@ -386,6 +407,60 @@ export function mountApp(root: HTMLElement, deps: {
     renderBars();
     renderClocks();
     if (thinking) root.setAttribute("data-thinking", ""); else root.removeAttribute("data-thinking");
+  }
+
+  // Drag-and-drop: a press on one of your pieces that moves past a few pixels follows the pointer;
+  // releasing on a square is the same as tapping the piece, then that square.
+  let drag: { from: string; x: number; y: number; ghost?: HTMLElement } | null = null;
+  let suppressClick = false;
+  const squareAt = (x: number, y: number) =>
+    (document.elementFromPoint(x, y)?.closest("[data-square]") as HTMLElement | null)?.dataset.square;
+  boardEl.addEventListener("pointerdown", (e) => {
+    if (destroyed || !e.isPrimary || e.button !== 0) return;
+    const sqEl = (e.target as HTMLElement).closest("[data-square]") as HTMLElement | null;
+    const from = sqEl?.dataset.square;
+    if (!from || pieceMap().get(from)?.[0] !== human) return;
+    drag = { from, x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener("pointermove", onDragMove);
+  window.addEventListener("pointerup", onDragEnd);
+  window.addEventListener("pointercancel", onDragCancel);
+  function onDragMove(e: PointerEvent) {
+    if (!drag) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+      const src = boardEl.querySelector(`[data-square="${drag.from}"] [data-piece]`) as HTMLElement | null;
+      if (!src) { drag = null; return; }
+      const size = src.getBoundingClientRect().width;
+      const ghost = src.cloneNode(true) as HTMLElement;
+      ghost.setAttribute("data-drag-ghost", "");
+      ghost.removeAttribute("data-piece");
+      Object.assign(ghost.style, { position: "fixed", width: `${size}px`, height: `${size}px`, pointerEvents: "none", zIndex: "20" });
+      document.body.append(ghost);
+      src.style.opacity = "0.3";
+      drag.ghost = ghost;
+    }
+    const half = parseFloat(drag.ghost.style.width) / 2;
+    drag.ghost.style.left = `${e.clientX - half}px`;
+    drag.ghost.style.top = `${e.clientY - half}px`;
+  }
+  function onDragEnd(e: PointerEvent) {
+    const d = drag;
+    drag = null;
+    if (!d?.ghost) return;
+    d.ghost.remove();
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+    if (destroyed) return;
+    const to = squareAt(e.clientX, e.clientY);
+    if (selected !== d.from) onSquare(d.from);
+    if (to && to !== d.from && selected === d.from) onSquare(to);
+    else render();
+  }
+  function onDragCancel() {
+    drag?.ghost?.remove();
+    if (drag?.ghost) render();
+    drag = null;
   }
 
   function onSquare(sq: string) {
@@ -513,6 +588,10 @@ export function mountApp(root: HTMLElement, deps: {
   return {
     destroy() {
       destroyed = true;
+      window.removeEventListener("pointermove", onDragMove);
+      window.removeEventListener("pointerup", onDragEnd);
+      window.removeEventListener("pointercancel", onDragCancel);
+      drag?.ghost?.remove();
       clearInterval(ticker);
       generation++;
       clearTimeout(timer);

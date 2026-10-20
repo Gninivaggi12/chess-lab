@@ -36,20 +36,24 @@ select, input { min-height: 44px; box-sizing: border-box; font-size: 16px; }
   [data-move-list] { order: 1; }
 }
 
-[data-board] { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; aspect-ratio: 1; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
-[data-square] { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; min-width: 0; container-type: size; background: #f0d9b5; }
-/* dark squares: the top-left of the grid is dark, then they alternate within and across rows */
-[data-square]:nth-child(16n+1), [data-square]:nth-child(16n+3), [data-square]:nth-child(16n+5), [data-square]:nth-child(16n+7),
-[data-square]:nth-child(16n+10), [data-square]:nth-child(16n+12), [data-square]:nth-child(16n+14), [data-square]:nth-child(16n+16) { background: #b58863; }
-[data-square][data-last-move] { background: #cdd26a; }
+[data-board] { display: grid; grid-template-columns: repeat(8, 1fr); width: 100%; aspect-ratio: 1; user-select: none; -webkit-user-select: none; touch-action: none; }
+[data-square] { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; min-width: 0; container-type: size; background: #ebecd0; }
+/* a1 is dark: squares carry data-dark, so a flipped board keeps its colors */
+[data-square][data-dark] { background: #779556; }
+[data-square][data-last-move] { background: #f5f682; }
 [data-square][data-premove] { background: #e0a060; }
-[data-square][data-selected] { background: #f6f669; }
+[data-square][data-selected] { background: #bbcb2b; }
 [data-square][data-check] { background: #e8503a; }
-[data-square][data-target]::after { content: ""; position: absolute; width: 28%; height: 28%; border-radius: 50%; background: rgba(0, 0, 0, 0.25); }
+[data-square][data-target]::after { content: ""; position: absolute; width: 28%; height: 28%; border-radius: 50%; background: rgba(0, 0, 0, 0.2); }
+[data-square][data-target]:has([data-piece])::after { width: 86%; height: 86%; background: none; border: 6px solid rgba(0, 0, 0, 0.2); box-sizing: border-box; }
 
-[data-piece] { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-size: 82cqmin; line-height: 1; pointer-events: none; }
-[data-piece^="w"] { color: #fff; text-shadow: 0 0 2px #000, 0 0 1px #000, 0 1px 0 #000; }
-[data-piece^="b"] { color: #111; text-shadow: 0 0 1px #fff; }
+[data-piece] { display: block; width: 100%; height: 100%; pointer-events: none; }
+[data-piece] img, [data-drag-ghost] img { display: block; width: 100%; height: 100%; }
+[data-coord] { position: absolute; font-size: 12px; font-weight: 700; line-height: 1; pointer-events: none; color: #779556; }
+[data-coord="rank"] { top: 3px; left: 3px; }
+[data-coord="file"] { bottom: 3px; right: 3px; }
+/* label color contrasts with its square: dark squares get cream */
+[data-square][data-dark] [data-coord] { color: #ebecd0; }
 
 [data-clock] { font-variant-numeric: tabular-nums; }
 [data-move-list] span { display: inline-block; margin-right: 8px; }

@@ -469,7 +469,7 @@
     "tests": [
       "tests/ui_board_look.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "engine-strength",
