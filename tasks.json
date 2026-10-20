@@ -349,7 +349,7 @@
     "tests": [
       "tests/ui_flag.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "ui-sound",

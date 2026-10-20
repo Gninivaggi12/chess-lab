@@ -1,4 +1,4 @@
-import { applyMove, gameStatus, inCheck, INITIAL_FEN, legalMoves, premoveTargets } from "../core/index.ts";
+import { applyMove, gameStatus, inCheck, INITIAL_FEN, legalMoves, premoveTargets, timeoutResult } from "../core/index.ts";
 import type { SoundKind, Uci } from "../core/types.ts";
 import { createClock } from "../clock/index.ts";
 import type { Clock, ClockState } from "../clock/index.ts";
@@ -40,7 +40,12 @@ function formatClock(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-function statusText(startFen: string, moves: string[], fen: string): { text: string; over: boolean } {
+function statusText(startFen: string, moves: string[], fen: string, timeout: string | null = null): { text: string; over: boolean } {
+  if (timeout) {
+    const t = timeoutResult(fen, timeout as "w" | "b");
+    if (t.reason === "timeout-vs-insufficient-material") return { text: "Draw · timeout vs insufficient material", over: true };
+    return { text: `Time out · ${t.result === "1-0" ? "White" : "Black"} wins`, over: true };
+  }
   const s = gameStatus(startFen, moves);
   if (!s.over) return { text: fen.split(" ")[1] === "w" ? "White to move" : "Black to move", over: false };
   const draw: Record<string, string> = {
@@ -102,6 +107,7 @@ export function mountApp(root: HTMLElement, deps: {
       clock = makeClock(tc.state);
     }
   } catch { /* unreadable save: no clock */ }
+  let flagged: string | null = null;
   let selected: string | null = null;
   let pendingPromotion: { from: string; to: string } | null = null;
   let thinking = false;
@@ -190,12 +196,30 @@ export function mountApp(root: HTMLElement, deps: {
   }
   const ticker = setInterval(() => {
     if (destroyed || !clock) return;
+    if (checkFlag()) { render(); return; }
     renderClocks();
     save();
   }, 100);
 
   const turn = () => fen.split(" ")[1];
-  const isOver = () => statusText(startFen, moves, fen).over;
+  const isOver = () => statusText(startFen, moves, fen, flagged).over;
+
+  // Ends the game when a running clock hits zero; true if it just did.
+  function checkFlag(): boolean {
+    if (!clock || flagged || statusText(startFen, moves, fen).over) return false;
+    const f = clock.flagged();
+    if (!f) return false;
+    flagged = f;
+    clock.pause();
+    generation++;
+    clearTimeout(timer);
+    thinking = false;
+    selected = null;
+    pendingPromotion = null;
+    premove = null;
+    save();
+    return true;
+  }
 
   function squaresInOrder(): string[] {
     const out: string[] = [];
@@ -296,7 +320,7 @@ export function mountApp(root: HTMLElement, deps: {
       }
     }
 
-    statusEl.textContent = statusText(startFen, moves, fen).text;
+    statusEl.textContent = statusText(startFen, moves, fen, flagged).text;
     listEl.replaceChildren(...sans.map((san, i) => {
       const el = document.createElement("span");
       el.setAttribute("data-ply", String(i + 1));
@@ -308,6 +332,7 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function onSquare(sq: string) {
+    if (checkFlag()) render();
     if (destroyed || isOver() || pendingPromotion) return;
     if (thinking) { onPremoveSquare(sq); return; }
     if (turn() !== human) return;
@@ -373,6 +398,7 @@ export function mountApp(root: HTMLElement, deps: {
     generation++;
     clearTimeout(timer);
     thinking = false;
+    flagged = null;
     selected = null;
     pendingPromotion = null;
     level = Number(levelSel.value) || 3;
@@ -422,8 +448,9 @@ export function mountApp(root: HTMLElement, deps: {
     engine.bestMove(fen, level, limit).then((m) => { reply = m; finish(); });
   }
 
+  checkFlag();
   render();
-  if (turn() !== human) engineTurn();
+  if (!isOver() && turn() !== human) engineTurn();
 
   return {
     destroy() {
