@@ -2,6 +2,7 @@ import { INITIAL_FEN, findKing, isAttacked, parseFEN, sqIndex } from "./board.ts
 import type { Color } from "./types.ts";
 
 export { INITIAL_FEN };
+export { legalMoves } from "./moves.ts";
 
 export function isValidFEN(fen: string): boolean {
   try {
