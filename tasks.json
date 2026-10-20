@@ -392,7 +392,7 @@
     "tests": [
       "tests/pwa_install.test.ts"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "id": "pwa-offline",

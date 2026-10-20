@@ -1,6 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  base: "./",                     // relative URLs: the built app must work from any folder (GitHub Pages subpath)
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",          // UI tests opt in with: // @vitest-environment jsdom
