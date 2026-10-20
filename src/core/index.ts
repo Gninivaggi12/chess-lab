@@ -106,6 +106,22 @@ export function positionStatus(fen: string): { over: boolean; result: Result; re
   return { over: false, result: "*" };
 }
 
+export function gameStatus(startFen: string, moves: string[]): { over: boolean; result: Result; reason?: EndReason } {
+  let fen = normalizeFEN(startFen);
+  const key = (f: string) => f.split(" ").slice(0, 4).join(" ");
+  const seen = [key(fen)];
+  for (const m of moves) {
+    fen = applyMove(fen, m);
+    seen.push(key(fen));
+  }
+  const status = positionStatus(fen);
+  if (status.over && status.reason !== "fifty-move-rule") return status;
+  if (seen.filter((k) => k === seen[seen.length - 1]).length >= 3) {
+    return { over: true, result: "1/2-1/2", reason: "threefold-repetition" };
+  }
+  return status;
+}
+
 export function premoveTargets(fen: string, square: string): string[] {
   const pos = parseFEN(fen);
   if (!pos) return [];
