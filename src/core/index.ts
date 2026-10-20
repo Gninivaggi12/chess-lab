@@ -43,3 +43,10 @@ export function isValidFEN(fen: string): boolean {
     return false;
   }
 }
+
+export function inCheck(fen: string): boolean {
+  const pos = parseFEN(fen);
+  if (!pos) throw new Error(`invalid FEN: ${fen}`);
+  const other: Color = pos.turn === "w" ? "b" : "w";
+  return isAttacked(pos.board, findKing(pos.board, pos.turn), other);
+}
