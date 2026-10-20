@@ -90,6 +90,10 @@ export async function openApp(): Promise<Page> {
       await send("Emulation.setTouchEmulationEnabled", { enabled: v.mobile });
     },
     async open() {
+      // Start from a clean slate every time: the app saves the game in progress, and a
+      // previous load (another screen size, a flip, a move) must not leak into this one.
+      await send("Page.navigate", { url });
+      await page.eval("localStorage.clear(); sessionStorage.clear()").catch(() => {});
       await send("Page.navigate", { url });
       for (let i = 0; i < 50; i++) {
         await wait(100);

@@ -23,7 +23,7 @@
   out.pieces = [...document.querySelectorAll("[data-piece]")].map((p) => {
     const cs = getComputedStyle(p), b = box(p);
     const visible = (p.textContent.trim() !== "" && cs.color !== "rgba(0, 0, 0, 0)") ||
-      cs.backgroundImage !== "none" || !!p.querySelector("svg,img") ||
+      cs.backgroundImage !== "none" || !!p.querySelector("svg,img") || /^(IMG|svg)$/i.test(p.tagName) ||
       getComputedStyle(p, "::before").content.replace(/["']/g, "") !== "none" && getComputedStyle(p, "::before").content !== "normal";
     return { piece: p.dataset.piece, w: b.w, h: b.h, visible, hidden: cs.visibility === "hidden" || cs.display === "none" || +cs.opacity === 0 };
   });

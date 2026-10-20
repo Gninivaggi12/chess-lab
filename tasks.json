@@ -468,5 +468,19 @@
       "tests/ui_board_look.test.ts"
     ],
     "passes": false
+  },
+  {
+    "id": "engine-strength",
+    "title": "Engine strength: level 5 plays at ~1450 Elo or better against Stockfish (harness check, results in VERIFY.md)",
+    "depends_on": [
+      "engine-search",
+      "engine-mate1",
+      "engine-mate2"
+    ],
+    "tests": [],
+    "checks": [
+      "engine-strength"
+    ],
+    "passes": false
   }
 ]
