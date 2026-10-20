@@ -175,8 +175,43 @@ export function mountApp(root: HTMLElement, deps: {
   settingsEl.append(levelSel, colorSel, timeSel, customMin, customInc);
   levelSel.value = String(level);
   colorSel.value = human;
-  actionsEl.append(newGameBtn, undoBtn, flipBtn, muteBtn);
-  root.replaceChildren(boardEl, promoEl, statusEl, listEl, actionsEl, settingsEl);
+  const settingsBtn = document.createElement("button");
+  settingsBtn.setAttribute("data-action", "settings");
+  settingsBtn.textContent = "Settings";
+  settingsBtn.addEventListener("click", () => { if (!destroyed) settingsEl.hidden = !settingsEl.hidden; });
+  const closeBtn = document.createElement("button");
+  closeBtn.setAttribute("data-action", "close-settings");
+  closeBtn.textContent = "Close";
+  closeBtn.addEventListener("click", () => { settingsEl.hidden = true; });
+  const creditsEl = document.createElement("div");
+  creditsEl.setAttribute("data-credits", "");
+  creditsEl.textContent = "Pieces by Cburnett (BSD license)";
+  settingsEl.hidden = true;
+  settingsEl.append(creditsEl, closeBtn);
+  actionsEl.append(newGameBtn, undoBtn, flipBtn, settingsBtn, muteBtn);
+
+  const makeBar = (pos: string) => {
+    const bar = document.createElement("div");
+    bar.setAttribute("data-player-bar", pos);
+    const avatar = document.createElement("span");
+    avatar.setAttribute("data-avatar", "");
+    const name = document.createElement("span");
+    name.setAttribute("data-player-name", "");
+    bar.append(avatar, name);
+    return { bar, name };
+  };
+  const topBar = makeBar("top");
+  const bottomBar = makeBar("bottom");
+  const mainEl = document.createElement("div");
+  mainEl.setAttribute("data-main", "");
+  mainEl.append(topBar.bar, boardEl, bottomBar.bar);
+  const panelEl = document.createElement("div");
+  panelEl.setAttribute("data-panel", "");
+  panelEl.append(statusEl, promoEl, actionsEl, listEl);
+  const gameEl = document.createElement("div");
+  gameEl.setAttribute("data-game", "");
+  gameEl.append(mainEl, panelEl);
+  root.replaceChildren(gameEl, settingsEl);
 
   function save() {
     const c = timeControl && clock ? { ...timeControl, state: clock.snapshot() } : undefined;
@@ -185,7 +220,15 @@ export function mountApp(root: HTMLElement, deps: {
 
   const clockEls = { w: document.createElement("div"), b: document.createElement("div") };
   for (const c of ["w", "b"] as const) clockEls[c].setAttribute("data-clock", c);
-  root.append(clockEls.w, clockEls.b);
+
+  function renderBars() {
+    const topColor = flipped ? "w" : "b";
+    const bottomColor = flipped ? "b" : "w";
+    for (const [b, c] of [[topBar, topColor], [bottomBar, bottomColor]] as const) {
+      b.name.textContent = c === human ? "You" : `Computer · Level ${level}`;
+      b.bar.append(clockEls[c]);
+    }
+  }
 
   function renderClocks() {
     const running = clock && moves.length > 0 && !isOver() ? turn() : null;
@@ -321,12 +364,26 @@ export function mountApp(root: HTMLElement, deps: {
     }
 
     statusEl.textContent = statusText(startFen, moves, fen, flagged).text;
-    listEl.replaceChildren(...sans.map((san, i) => {
+    const rows: HTMLElement[] = [];
+    sans.forEach((san, i) => {
+      if (i % 2 === 0) {
+        const row = document.createElement("div");
+        row.setAttribute("data-move-row", "");
+        const num = document.createElement("span");
+        num.setAttribute("data-move-number", "");
+        num.textContent = `${i / 2 + 1}.`;
+        row.append(num);
+        rows.push(row);
+      }
       const el = document.createElement("span");
       el.setAttribute("data-ply", String(i + 1));
+      if (i === sans.length - 1) el.setAttribute("data-current", "");
       el.textContent = san;
-      return el;
-    }));
+      rows[rows.length - 1].append(el);
+    });
+    listEl.replaceChildren(...rows);
+    listEl.scrollTop = listEl.scrollHeight;
+    renderBars();
     renderClocks();
     if (thinking) root.setAttribute("data-thinking", ""); else root.removeAttribute("data-thinking");
   }
@@ -395,6 +452,7 @@ export function mountApp(root: HTMLElement, deps: {
   }
 
   function newGame() {
+    settingsEl.hidden = true;
     generation++;
     clearTimeout(timer);
     thinking = false;
